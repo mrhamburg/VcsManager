@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\VcsManager.GitHub\VcsManager.GitHub.csproj" />
     <ProjectReference Include="..\..\src\VcsManager.GitLab\VcsManager.GitLab.csproj" />
     <ProjectReference Include="..\..\src\VcsManager.AzureDevOps\VcsManager.AzureDevOps.csproj" />
+    <ProjectReference Include="..\..\src\VcsManager.Gitea\VcsManager.Gitea.csproj" />
   </ItemGroup>
 
 </Project>
