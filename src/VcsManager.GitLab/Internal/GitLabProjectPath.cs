@@ -29,6 +29,23 @@ internal static class GitLabProjectPath
         return string.Join("/", segments);
     }
 
+    public static string CombineNamespace(string? owner, string? project)
+    {
+        var segments = new List<string>(2);
+
+        AddSegment(segments, owner);
+        AddSegment(segments, project);
+
+        if (segments.Count == 0)
+        {
+            throw new ArgumentException(
+                "A GitLab namespace is required. Set Owner or GitLabOptions.DefaultNamespace.",
+                nameof(owner));
+        }
+
+        return string.Join("/", segments);
+    }
+
     public static string Encode(string path)
     {
         return Uri.EscapeDataString(path.Trim());

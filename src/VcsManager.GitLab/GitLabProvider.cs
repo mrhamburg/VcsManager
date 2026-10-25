@@ -30,44 +30,188 @@ public sealed class GitLabProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> CreateRepositoryAsync(
+    public async Task<VcsRepository> CreateRepositoryAsync(
         CreateRepositoryRequest request,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab repository operations are added by a later milestone issue.");
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateCreateRepositoryRequest(request);
+
+        var owner = ResolveOwner(request.Owner);
+        var repository = CreateRepositoryRef(owner, request.Project, request.Name);
+        var namespacePath = GitLabProjectPath.CombineNamespace(owner, request.Project);
+
+        try
+        {
+            var project = await _client.CreateProjectAsync(
+                namespacePath,
+                request,
+                cancellationToken);
+            return GitLabMapper.ToRepository(project);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "CreateRepository",
+                repository);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> GetRepositoryAsync(
+    public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab repository operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+
+        try
+        {
+            return GitLabMapper.ToRepository(
+                await _client.GetProjectAsync(path, cancellationToken));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "GetRepository",
+                resolved);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
+    public async Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
         RepositoryQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab repository operations are added by a later milestone issue.");
+        query ??= new RepositoryQuery();
+        pagination ??= new PaginationOptions();
+
+        var owner = ResolveOptionalOwner(query.Owner);
+        var namespacePath = owner is null
+            ? null
+            : GitLabProjectPath.CombineNamespace(owner, query.Project);
+
+        try
+        {
+            var page = await _client.ListProjectsAsync(
+                namespacePath,
+                query,
+                pagination,
+                cancellationToken);
+
+            return new PagedResult<VcsRepository>
+            {
+                Items = page.Items
+                    .Where(project => MatchesRepositoryQuery(project, query))
+                    .Select(GitLabMapper.ToRepository)
+                    .ToArray(),
+                Page = pagination.Page,
+                PageSize = pagination.PageSize,
+                TotalCount = page.TotalCount,
+                HasNextPage = page.HasNextPage,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapOperation(exception, "ListRepositories");
+        }
     }
 
     /// <inheritdoc/>
-    public Task DeleteRepositoryAsync(
+    public async Task DeleteRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab repository operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+
+        try
+        {
+            await _client.DeleteProjectAsync(path, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "DeleteRepository",
+                resolved);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<bool> RepositoryExistsAsync(
+    public async Task<bool> RepositoryExistsAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab repository operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+
+        try
+        {
+            await _client.GetProjectAsync(path, cancellationToken);
+            return true;
+        }
+        catch (RepositoryNotFoundException)
+        {
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var mapped = GitLabExceptionMapper.MapRepository(
+                exception,
+                "RepositoryExists",
+                resolved);
+
+            if (mapped is RepositoryNotFoundException)
+            {
+                return false;
+            }
+
+            throw mapped;
+        }
     }
 
     /// <inheritdoc/>
@@ -121,6 +265,87 @@ public sealed class GitLabProvider : IVcsProvider
     public ValueTask DisposeAsync()
     {
         return _client.DisposeAsync();
+    }
+
+    private string ResolveOwner(string? owner)
+    {
+        var resolved = string.IsNullOrWhiteSpace(owner) ? _options.DefaultNamespace : owner;
+
+        return RequireValue(
+            resolved,
+            "A GitLab namespace is required. Set Owner or GitLabOptions.DefaultNamespace.",
+            nameof(owner));
+    }
+
+    private string? ResolveOptionalOwner(string? owner)
+    {
+        var resolved = string.IsNullOrWhiteSpace(owner) ? _options.DefaultNamespace : owner;
+        return string.IsNullOrWhiteSpace(resolved) ? null : resolved.Trim();
+    }
+
+    private RepositoryRef ResolveRepository(RepositoryRef repository)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+
+        var owner = ResolveOwner(repository.Owner);
+        var name = RequireValue(
+            repository.Name,
+            "A repository name is required.",
+            nameof(repository));
+
+        return repository with
+        {
+            Owner = owner,
+            Project = NormalizeOptional(repository.Project),
+            Name = name,
+        };
+    }
+
+    private static RepositoryRef CreateRepositoryRef(string owner, string? project, string name)
+    {
+        return new RepositoryRef
+        {
+            Owner = owner,
+            Project = NormalizeOptional(project),
+            Name = name.Trim(),
+        };
+    }
+
+    private static void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
+    {
+        RequireValue(request.Name, "A repository name is required.", nameof(request));
+    }
+
+    private static bool MatchesRepositoryQuery(GitLabProject project, RepositoryQuery query)
+    {
+        if (!query.IncludeArchived && project.IsArchived)
+        {
+            return false;
+        }
+
+        if (query.Visibility is { } visibility && project.Visibility != visibility)
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(query.NameContains) ||
+            project.Path.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase) ||
+            project.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string RequireValue(string? value, string message, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException(message, parameterName);
+        }
+
+        return value.Trim();
     }
 
     private static IGitLabApiClient CreateClient(GitLabOptions options)
