@@ -14,4 +14,9 @@
     <ProjectReference Include="..\VcsManager\VcsManager.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="VcsManager.GitLab.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
 </Project>
