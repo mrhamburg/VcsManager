@@ -13,9 +13,14 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v7
@@ -29,7 +34,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: ~/.nuget/packages
-        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'global.json') }}
         restore-keys: |
           nuget-${{ runner.os }}-
 
@@ -50,6 +55,14 @@ jobs:
         --collect:"XPlat Code Coverage"
         --results-directory ./test-results
 
+    - name: Upload coverage
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: coverage
+        path: ./test-results/**/coverage.cobertura.xml
+        retention-days: 7
+
     - name: Pack NuGet packages
       run: dotnet pack --no-build -c Release --output ./nupkg
 
@@ -57,12 +70,15 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: nuget-packages
-        path: ./nupkg/*.nupkg
+        path: |
+          ./nupkg/*.nupkg
+          ./nupkg/*.snupkg
         retention-days: 7
 
   integration-gitea:
     name: Integration tests (Gitea)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-and-test
 
     services:
@@ -130,6 +146,7 @@ jobs:
   integration-github:
     name: Integration tests (GitHub)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-and-test
     if: vars.HAS_GITHUB_SECRETS == 'true'
 
@@ -151,6 +168,7 @@ jobs:
   integration-gitlab:
     name: Integration tests (GitLab)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-and-test
     if: vars.HAS_GITLAB_SECRETS == 'true'
 
@@ -172,6 +190,7 @@ jobs:
   integration-azure-devops:
     name: Integration tests (Azure DevOps)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-and-test
     if: vars.HAS_AZURE_DEVOPS_SECRETS == 'true'
 

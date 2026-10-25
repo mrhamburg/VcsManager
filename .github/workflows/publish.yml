@@ -10,12 +10,27 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: release
 
     steps:
+      - name: Require a version tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "Publishing needs a version tag such as v0.2.0." >&2
+          exit 1
+
       - uses: actions/checkout@v7
 
       - name: Setup .NET
@@ -23,17 +38,31 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Resolve package version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Restore dependencies
         run: dotnet restore
 
+      - name: Check formatting
+        run: dotnet format --verify-no-changes --no-restore
+
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build --no-restore -c Release -p:Version=$VERSION
 
       - name: Run tests
         run: dotnet test --no-build -c Release
 
       - name: Pack
-        run: dotnet pack --no-build -c Release --output ./nupkg
+        run: dotnet pack --no-build -c Release -p:Version=$VERSION --output ./nupkg
+
+      - name: Check package count
+        run: |
+          count="$(ls ./nupkg/*.nupkg | wc -l)"
+          if [ "$count" -ne 5 ]; then
+            echo "Expected 5 packages but found $count." >&2
+            exit 1
+          fi
 
       - name: NuGet login (OIDC)
         id: login
