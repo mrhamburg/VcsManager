@@ -112,6 +112,13 @@ provider:
 - [Architecture decision records](docs/adr/README.md)
 - [Provider capability matrix](docs/providers/capability-matrix.md)
 
+## Contributing
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Feature request template](.github/ISSUE_TEMPLATE/feature_request.md)
+
 ## License
 
 Licensed under either of the following, at your option:

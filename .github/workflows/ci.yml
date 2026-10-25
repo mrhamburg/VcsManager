@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check formatting
+      run: dotnet format --verify-no-changes --no-restore
+
+    - name: Build
+      run: dotnet build --no-restore -c Release
+
+    - name: Run tests with coverage
+      run: >-
+        dotnet test
+        --no-build
+        -c Release
+        --collect:"XPlat Code Coverage"
+        --results-directory ./test-results
+
+    - name: Pack NuGet packages
+      run: dotnet pack --no-build -c Release --output ./nupkg
+
+    - name: Upload NuGet packages
+      uses: actions/upload-artifact@v7
+      with:
+        name: nuget-packages
+        path: ./nupkg/*.nupkg
+        retention-days: 7
