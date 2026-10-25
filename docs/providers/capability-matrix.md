@@ -30,7 +30,7 @@ This matrix describes VcsManager v1 behavior. It is a companion to the
 | --- | --- | --- | --- | --- |
 | GitHub | User or organization | Unsupported | Repository | `{owner}/{name}` |
 | GitLab | Top-level namespace | Optional subgroup path | Project | `{owner}/{project}/{name}` or `{owner}/{name}` |
-| Azure DevOps | Organization | Team project (required) | Repository | `{owner}/{project}/_git/{name}` |
+| Azure DevOps | Organization (defaults to `OrganizationUrl`) | Team project (required unless `DefaultProject` is set) | Repository | `{owner}/{project}/_git/{name}` |
 
 See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 
@@ -42,7 +42,7 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 | --- | --- | --- |
 | GitHub | Supported | `Owner` selects an organization; when absent, `DefaultOwner` or the authenticated user is used. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. `DefaultBranch` is applied after creation when the repository already has a branch. |
 | GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. |
-| Azure DevOps | Conditional | `Owner` (organization) and `Project` (team project) are required, and the project must already exist. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error. The token needs project administration rights. |
+| Azure DevOps | Conditional | The team project must already exist and is resolved from `Project` or `DefaultProject`. The organization defaults to `OrganizationUrl`. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error, and `DefaultBranch` is ignored. The token needs project administration rights for policies that require them. |
 
 ### Delete repository
 
@@ -61,7 +61,7 @@ usually returns not found. Callers handle the not-found error explicitly.
 | --- | --- | --- |
 | GitHub | Supported | Lists repositories for `Owner` (user or organization) or all repositories visible to the token when `Owner` is absent. Archived repositories are included only when requested. |
 | GitLab | Supported | Lists projects in `Owner` (group or user), optionally in the subgroup `Project`, or all projects visible to the token. `IncludeArchived` maps to the project `archived` filter. |
-| Azure DevOps | Conditional | `Owner` is the organization. `Project` narrows the result to one team project; without it, the organization-level repository listing is used. Azure DevOps has no repository archive concept, so `IncludeArchived` has no effect. |
+| Azure DevOps | Conditional | Lists one team project from `Project` or `DefaultProject`; without either, it uses the organization-level REST listing for the configured organization. `NameContains` and `Visibility` apply to the returned page. Azure DevOps has no repository archive concept, so `IncludeArchived` has no effect and repositories report `Private`. `TotalCount` is `null`. |
 
 All listings are bounded by token permissions. See
 [ADR-0006](../adr/0006-repository-list-scope.md).
@@ -80,7 +80,7 @@ All listings are bounded by token permissions. See
 | --- | --- | --- |
 | GitHub | Conditional | The repository must allow the requested `merge`, `squash`, or `rebase` method. Branch protection, required checks, and merge queue rules can reject the merge. |
 | GitLab | Conditional | The project `merge_method` and squash settings control the outcome of `Merge` and `Squash`. `Rebase` is rejected in v1 because the provider cannot verify the project settings per call. Conflicts and failed pipelines can block the merge. |
-| Azure DevOps | Conditional | Completion uses `noFastForward`, `squash`, or `rebase`. Branch policies, required reviewers, and build validation can block completion. Reviewer votes are separate from completion and never merge a pull request. |
+| Azure DevOps | Conditional | Completion reads the pull request, sends `lastMergeSourceCommit`, and uses `noFastForward`, `squash`, or `rebase`. Branch policies, required reviewers, and build validation can block completion. Reviewer votes are separate from completion and never merge a pull request. |
 
 ### Close pull request
 
@@ -106,12 +106,13 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 | --- | --- |
 | GitHub | Project-scoped repository addressing; OAuth and GitHub App authentication; provider-reported total counts for pagination |
 | GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf; the `Rebase` merge method |
-| Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method |
+| Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method; `InitializeWithReadme` on repository creation |
 
 ## Provider documentation
 
 - [GitHub provider configuration and behavior](github.md)
 - [GitLab provider configuration and behavior](gitlab.md)
+- [Azure DevOps provider configuration and behavior](azure-devops.md)
 - GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
 - GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
 - GitLab REST API: <https://docs.gitlab.com/api/rest/>
