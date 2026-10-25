@@ -15,14 +15,14 @@ This matrix describes VcsManager v1 behavior. It is a companion to the
 
 ## Capability summary
 
-| Capability | GitHub | GitLab | Azure DevOps |
-| --- | --- | --- | --- |
-| Create repository | Supported | Supported | Conditional |
-| Delete repository | Supported | Supported | Supported |
-| List repositories | Supported | Supported | Supported |
-| Create pull request | Supported | Supported | Supported |
-| Merge pull request | Conditional | Conditional | Conditional |
-| Close pull request | Supported | Supported | Supported |
+| Capability | GitHub | GitLab | Azure DevOps | Gitea |
+| --- | --- | --- | --- | --- |
+| Create repository | Supported | Supported | Conditional | Supported |
+| Delete repository | Supported | Supported | Supported | Supported |
+| List repositories | Supported | Supported | Supported | Supported |
+| Create pull request | Supported | Supported | Supported | Supported |
+| Merge pull request | Conditional | Conditional | Conditional | Conditional |
+| Close pull request | Supported | Supported | Supported | Supported |
 
 ## Repository addressing
 
@@ -31,6 +31,7 @@ This matrix describes VcsManager v1 behavior. It is a companion to the
 | GitHub | User or organization | Unsupported | Repository | `{owner}/{name}` |
 | GitLab | Top-level namespace | Optional subgroup path | Project | `{owner}/{project}/{name}` or `{owner}/{name}` |
 | Azure DevOps | Organization (defaults to `OrganizationUrl`) | Team project (required unless `DefaultProject` is set) | Repository | `{owner}/{project}/_git/{name}` |
+| Gitea | User or organization (defaults to `DefaultOwner`) | Unsupported | Repository | `{owner}/{name}` |
 
 See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 
@@ -43,6 +44,7 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 | GitHub | Supported | `Owner` selects an organization; when absent, `DefaultOwner` or the authenticated user is used. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. `DefaultBranch` is applied after creation when the repository already has a branch. |
 | GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. |
 | Azure DevOps | Conditional | The team project must already exist and is resolved from `Project` or `DefaultProject`. The organization defaults to `OrganizationUrl`. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error, and `DefaultBranch` is ignored. The token needs project administration rights for policies that require them. |
+| Gitea | Supported | `Owner` is a user or organization and defaults to `DefaultOwner`. Organization repositories use the organization endpoint; user repositories are created under the token account. Public and private visibility are mapped; `Internal` is rejected. `InitializeWithReadme` creates an initial commit. `Project` is unsupported. |
 
 ### Delete repository
 
@@ -51,6 +53,7 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 | GitHub | Supported | Requires repository administration and the `delete_repo` scope. |
 | GitLab | Supported | Requires the Owner or Maintainer role according to project settings. |
 | Azure DevOps | Supported | Requires project administration. Deletion may be disabled by organization policy. |
+| Gitea | Supported | Requires repository write access. |
 
 Deleting a repository is not idempotent across providers: a second delete
 usually returns not found. Callers handle the not-found error explicitly.
@@ -62,6 +65,7 @@ usually returns not found. Callers handle the not-found error explicitly.
 | GitHub | Supported | Lists repositories for `Owner` (user or organization) or all repositories visible to the token when `Owner` is absent. Archived repositories are included only when requested. |
 | GitLab | Supported | Lists projects in `Owner` (group or user), optionally in the subgroup `Project`, or all projects visible to the token. `IncludeArchived` maps to the project `archived` filter. |
 | Azure DevOps | Conditional | Lists one team project from `Project` or `DefaultProject`; without either, it uses the organization-level REST listing for the configured organization. `NameContains` and `Visibility` apply to the returned page. Azure DevOps has no repository archive concept, so `IncludeArchived` has no effect and repositories report `Private`. `TotalCount` is `null`. |
+| Gitea | Supported | Organization owners use `/orgs/{owner}/repos`; user owners resolve the user ID and use `/repos/search?uid={id}`; no owner uses `/repos/search`. Archived repositories are excluded unless requested. `NameContains` maps to `q` where supported. `Internal` visibility is rejected. The page size is capped at 50. |
 
 All listings are bounded by token permissions. See
 [ADR-0006](../adr/0006-repository-list-scope.md).
@@ -73,6 +77,7 @@ All listings are bounded by token permissions. See
 | GitHub | Supported | Source and target branches must exist. Draft pull requests are supported. Cross-repository pull requests require a fork and are not a v1 guarantee. |
 | GitLab | Supported | Source and target branches must exist in the project. Draft is supported. Project merge request settings can still block later merge. |
 | Azure DevOps | Supported | The target repository and project must exist. Draft pull requests are supported. Branch policies do not block creation, only completion. |
+| Gitea | Supported | Source and target branches must exist. Draft pull requests use the `WIP:` title convention. Repository merge settings do not block creation. |
 
 ### Merge pull request
 
@@ -81,6 +86,7 @@ All listings are bounded by token permissions. See
 | GitHub | Conditional | The repository must allow the requested `merge`, `squash`, or `rebase` method. Branch protection, required checks, and merge queue rules can reject the merge. |
 | GitLab | Conditional | The project `merge_method` and squash settings control the outcome of `Merge` and `Squash`. `Rebase` is rejected in v1 because the provider cannot verify the project settings per call. Conflicts and failed pipelines can block the merge. |
 | Azure DevOps | Conditional | Completion reads the pull request, sends `lastMergeSourceCommit`, and uses `noFastForward`, `squash`, or `rebase`. Branch policies, required reviewers, and build validation can block completion. Reviewer votes are separate from completion and never merge a pull request. |
+| Gitea | Conditional | `Merge`, `Squash`, and `Rebase` map to `do = merge`, `squash`, and `rebase`. Repository settings `allow_merge_commits`, `allow_squash_merge`, `allow_rebase`, and `allow_rebase_explicit` control success. A disabled style, conflict, archived repository, or invalid transition returns `VcsConflictException`. Reviews are not part of v1. |
 
 ### Close pull request
 
@@ -89,16 +95,17 @@ All listings are bounded by token permissions. See
 | GitHub | Supported | Idempotent. Closing an open pull request sets `state = closed`. A closed or merged pull request is returned unchanged. |
 | GitLab | Supported | Idempotent. Closing uses `state_event = close`. A closed or merged merge request is returned unchanged. |
 | Azure DevOps | Supported | Idempotent. Closing sets `status = abandoned`. An abandoned or completed pull request is returned unchanged. |
+| Gitea | Supported | Idempotent. Closing sets `state = closed`. A merged (`state = closed`, `merged = true`) or closed pull request is returned unchanged and merged stays `Merged`. |
 
 See [ADR-0008](../adr/0008-close-semantics.md).
 
 ## Merge method support
 
-| `MergeMethod` | GitHub | GitLab | Azure DevOps |
-| --- | --- | --- | --- |
-| `Merge` | Supported: `merge` | Conditional: merge commit when project `merge_method = merge` | Supported: `noFastForward` |
-| `Squash` | Supported: `squash` | Conditional: `squash = true`, subject to the project squash setting | Supported: `squash` |
-| `Rebase` | Supported: `rebase` | Unsupported in v1: rejected with `VcsUnsupportedOperationException` | Supported: `rebase` |
+| `MergeMethod` | GitHub | GitLab | Azure DevOps | Gitea |
+| --- | --- | --- | --- | --- |
+| `Merge` | Supported: `merge` | Conditional: merge commit when project `merge_method = merge` | Supported: `noFastForward` | Conditional: `do = merge` when `allow_merge_commits` |
+| `Squash` | Supported: `squash` | Conditional: `squash = true`, subject to the project squash setting | Supported: `squash` | Conditional: `do = squash` when `allow_squash_merge` |
+| `Rebase` | Supported: `rebase` | Unsupported in v1: rejected with `VcsUnsupportedOperationException` | Supported: `rebase` | Conditional: `do = rebase` when `allow_rebase` or `allow_rebase_explicit` |
 
 ## Not supported in v1
 
@@ -107,12 +114,14 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 | GitHub | Project-scoped repository addressing; OAuth and GitHub App authentication; provider-reported total counts for pagination |
 | GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf; the `Rebase` merge method |
 | Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method; `InitializeWithReadme` on repository creation |
+| Gitea | Project-scoped addressing; internal repository visibility; approvals and review requests; member management; `rebase-merge`, `fast-forward-only`, and `manually-merged` merge styles |
 
 ## Provider documentation
 
 - [GitHub provider configuration and behavior](github.md)
 - [GitLab provider configuration and behavior](gitlab.md)
 - [Azure DevOps provider configuration and behavior](azure-devops.md)
+- [Gitea provider configuration and behavior](gitea.md)
 - GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
 - GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
 - GitLab REST API: <https://docs.gitlab.com/api/rest/>
@@ -122,3 +131,6 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 - Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
 - Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
 - Azure DevOps pull requests API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1>
+- Gitea API documentation: <https://docs.gitea.com/api/1.0/>
+- Gitea repository API: <https://docs.gitea.com/api/1.0/#tag/repository>
+- Gitea pull request API: <https://docs.gitea.com/api/1.0/#tag/pull-request>

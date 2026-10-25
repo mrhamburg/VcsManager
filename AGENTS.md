@@ -33,11 +33,13 @@ src/
   VcsManager.GitHub/       GitHub provider
   VcsManager.GitLab/       GitLab provider
   VcsManager.AzureDevOps/  Azure DevOps provider
+  VcsManager.Gitea/        Gitea provider
 tests/
   VcsManager.Tests/
   VcsManager.GitHub.Tests/
   VcsManager.GitLab.Tests/
   VcsManager.AzureDevOps.Tests/
+  VcsManager.Gitea.Tests/
   VcsManager.IntegrationTests/
 samples/
 docs/
@@ -81,6 +83,7 @@ rewritten.
 | [0008](docs/adr/0008-close-semantics.md) | Close never merges. Close is idempotent: closed, merged, and completed pull requests are returned unchanged. |
 | [0009](docs/adr/0009-pagination-and-errors.md) | Page defaults to 1; page size defaults to 30 and must be 1–100. `TotalCount` is nullable. Map provider errors to the core error contract and never leak secrets. |
 | [0010](docs/adr/0010-exception-contract.md) | Provider failures derive from `VcsProviderException`. Never leak provider SDK or raw HTTP exceptions. Authentication and authorization are distinct; rate limits expose `RetryAfter`. |
+| [0011](docs/adr/0011-gitea-client.md) | Gitea uses REST API v1 with `HttpClient` and `System.Text.Json` behind an internal client. The page size is capped at 50. |
 
 ## Code conventions
 

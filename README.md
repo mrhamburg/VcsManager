@@ -10,7 +10,7 @@ through a consistent API.
 
 The repository is under active development. The core contracts, builder,
 configuration readers, operational layers, and tests are available. The GitHub,
-GitLab, and Azure DevOps providers are available.
+GitLab, Azure DevOps, and Gitea providers are available.
 
 ## Project layout
 
@@ -20,6 +20,7 @@ src/
   VcsManager.GitHub/       GitHub provider
   VcsManager.GitLab/       GitLab provider
   VcsManager.AzureDevOps/  Azure DevOps provider
+  VcsManager.Gitea/        Gitea provider
 tests/
   VcsManager.Tests/
   VcsManager.GitHub.Tests/
@@ -53,10 +54,11 @@ The core package ID is `VcsManager.Core`.
 ## Sample
 
 The sample runs the full repository and pull request flow with the built-in
-in-memory `demo` provider. For the same flow against GitHub, GitLab, or Azure
-DevOps, see the [GitHub provider page](docs/providers/github.md), the
-[GitLab provider page](docs/providers/gitlab.md), or the
-[Azure DevOps provider page](docs/providers/azure-devops.md).
+in-memory `demo` provider. For the same flow against a real provider, see the
+[GitHub provider page](docs/providers/github.md), the
+[GitLab provider page](docs/providers/gitlab.md), the
+[Azure DevOps provider page](docs/providers/azure-devops.md), or the
+[Gitea provider page](docs/providers/gitea.md).
 
 ```bash
 cd samples/VcsManager.Samples
@@ -115,6 +117,7 @@ provider:
 - [GitHub provider](docs/providers/github.md)
 - [GitLab provider](docs/providers/gitlab.md)
 - [Azure DevOps provider](docs/providers/azure-devops.md)
+- [Gitea provider](docs/providers/gitea.md)
 
 ## Contributing
 
