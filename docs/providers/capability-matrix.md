@@ -79,7 +79,7 @@ All listings are bounded by token permissions. See
 | Provider | Status | Notes |
 | --- | --- | --- |
 | GitHub | Conditional | The repository must allow the requested `merge`, `squash`, or `rebase` method. Branch protection, required checks, and merge queue rules can reject the merge. |
-| GitLab | Conditional | The project `merge_method` and squash settings control the outcome. `Rebase` is meaningful only under `rebase_merge` or `ff`; under `merge`, GitLab still creates a merge commit. Conflicts and failed pipelines can block the merge. |
+| GitLab | Conditional | The project `merge_method` and squash settings control the outcome of `Merge` and `Squash`. `Rebase` is rejected in v1 because the provider cannot verify the project settings per call. Conflicts and failed pipelines can block the merge. |
 | Azure DevOps | Conditional | Completion uses `noFastForward`, `squash`, or `rebase`. Branch policies, required reviewers, and build validation can block completion. Reviewer votes are separate from completion and never merge a pull request. |
 
 ### Close pull request
@@ -98,19 +98,20 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 | --- | --- | --- | --- |
 | `Merge` | Supported: `merge` | Conditional: merge commit when project `merge_method = merge` | Supported: `noFastForward` |
 | `Squash` | Supported: `squash` | Conditional: `squash = true`, subject to the project squash setting | Supported: `squash` |
-| `Rebase` | Supported: `rebase` | Conditional: requires project `merge_method = rebase_merge` or `ff` and a conflict-free rebase | Supported: `rebase` |
+| `Rebase` | Supported: `rebase` | Unsupported in v1: rejected with `VcsUnsupportedOperationException` | Supported: `rebase` |
 
 ## Not supported in v1
 
 | Provider | Not supported |
 | --- | --- |
 | GitHub | Project-scoped repository addressing; OAuth and GitHub App authentication; provider-reported total counts for pagination |
-| GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf |
+| GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf; the `Rebase` merge method |
 | Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method |
 
 ## Provider documentation
 
 - [GitHub provider configuration and behavior](github.md)
+- [GitLab provider configuration and behavior](gitlab.md)
 - GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
 - GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
 - GitLab REST API: <https://docs.gitlab.com/api/rest/>

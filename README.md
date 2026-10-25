@@ -10,8 +10,8 @@ through a consistent API.
 
 The repository is under active development. The core contracts, builder,
 configuration readers, operational layers, and tests are available. The GitHub
-provider is available; the GitLab and Azure DevOps providers are added in later
-milestones.
+and GitLab providers are available; the Azure DevOps provider is added in a
+later milestone.
 
 ## Project layout
 
@@ -54,8 +54,9 @@ The core package ID is `VcsManager.Core`.
 ## Sample
 
 The sample runs the full repository and pull request flow with the built-in
-in-memory `demo` provider. For the same flow against GitHub, see the
-[GitHub provider page](docs/providers/github.md).
+in-memory `demo` provider. For the same flow against GitHub or GitLab, see the
+[GitHub provider page](docs/providers/github.md) or the
+[GitLab provider page](docs/providers/gitlab.md).
 
 ```bash
 cd samples/VcsManager.Samples
@@ -112,6 +113,7 @@ provider:
 - [Architecture decision records](docs/adr/README.md)
 - [Provider capability matrix](docs/providers/capability-matrix.md)
 - [GitHub provider](docs/providers/github.md)
+- [GitLab provider](docs/providers/gitlab.md)
 
 ## Contributing
 
