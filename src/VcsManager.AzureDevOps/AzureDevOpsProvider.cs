@@ -99,12 +99,52 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
+    public async Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
         RepositoryQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        query ??= new RepositoryQuery();
+        pagination ??= new PaginationOptions();
+
+        var owner = ResolveOwner(query.Owner);
+        var project = string.IsNullOrWhiteSpace(query.Project)
+            ? _options.DefaultProject
+            : query.Project;
+        project = string.IsNullOrWhiteSpace(project) ? null : project.Trim();
+
+        try
+        {
+            var page = await _client.ListRepositoriesAsync(
+                project,
+                query,
+                pagination,
+                cancellationToken);
+
+            return new PagedResult<VcsRepository>
+            {
+                Items = page.Items
+                    .Where(repository => MatchesRepositoryQuery(repository, query))
+                    .Select(AzureDevOpsMapper.ToRepository)
+                    .ToArray(),
+                Page = pagination.Page,
+                PageSize = pagination.PageSize,
+                TotalCount = page.TotalCount,
+                HasNextPage = page.HasNextPage,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapOperation(exception, "ListRepositories");
+        }
     }
 
     /// <inheritdoc/>
@@ -282,6 +322,19 @@ public sealed class AzureDevOpsProvider : IVcsProvider
                 ProviderName,
                 "CreateRepository with InitializeWithReadme");
         }
+    }
+
+    private static bool MatchesRepositoryQuery(
+        AzureDevOpsRepository repository,
+        RepositoryQuery query)
+    {
+        if (query.Visibility is { } visibility && visibility != VcsVisibility.Private)
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(query.NameContains) ||
+            repository.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
