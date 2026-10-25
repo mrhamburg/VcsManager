@@ -45,6 +45,92 @@ public sealed class GiteaApiClientTests
     }
 
     [Fact]
+    public async Task CreatePullRequest_AsDraft_PrefixesWipTitle()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository/pulls",
+            """
+            {
+              "id": 107,
+              "number": 7,
+              "title": "WIP: Draft change",
+              "state": "open",
+              "draft": true,
+              "user": { "id": 2, "login": "test-user" },
+              "head": { "ref": "feature" },
+              "base": { "ref": "main" }
+            }
+            """);
+        await using var client = CreateClient(handler);
+
+        var pullRequest = await client.CreatePullRequestAsync(
+            "test-owner",
+            "test-repository",
+            new CreatePullRequestRequest
+            {
+                Title = "Draft change",
+                Description = "A draft pull request",
+                SourceBranch = "feature",
+                TargetBranch = "main",
+                Draft = true,
+            },
+            CancellationToken.None);
+
+        Assert.Equal(PullRequestState.Draft, pullRequest.State);
+        Assert.True(pullRequest.IsDraft);
+        Assert.NotNull(handler.LastBody);
+        Assert.Contains("\"head\":\"feature\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"base\":\"main\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"title\":\"WIP: Draft change\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"body\":\"A draft pull request\"", handler.LastBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ListPullRequests_MapsFiltersAndResponse()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository/pulls",
+            """
+            [
+              {
+                "id": 108,
+                "number": 8,
+                "title": "Merged change",
+                "state": "closed",
+                "merged": true,
+                "user": { "id": 2, "login": "test-user" },
+                "head": { "ref": "feature" },
+                "base": { "ref": "main" }
+              }
+            ]
+            """);
+        await using var client = CreateClient(handler);
+
+        var page = await client.ListPullRequestsAsync(
+            "test-owner",
+            "test-repository",
+            new PullRequestQuery
+            {
+                State = PullRequestState.Merged,
+                Author = "test-user",
+                TargetBranch = "main",
+            },
+            new PaginationOptions { Page = 2, PageSize = 100 },
+            CancellationToken.None);
+
+        var request = handler.Requests[0];
+        Assert.Equal("/api/v1/repos/test-owner/test-repository/pulls", request.AbsolutePath);
+        Assert.Contains("state=closed", request.Query, StringComparison.Ordinal);
+        Assert.Contains("poster=test-user", request.Query, StringComparison.Ordinal);
+        Assert.Contains("base_branch=main", request.Query, StringComparison.Ordinal);
+        Assert.Contains("page=2", request.Query, StringComparison.Ordinal);
+        Assert.Contains("limit=50", request.Query, StringComparison.Ordinal);
+        Assert.Equal(PullRequestState.Merged, page.Items[0].State);
+    }
+
+    [Fact]
     public async Task ListRepositories_ForOrganization_UsesOrganizationEndpoint()
     {
         var handler = new StubGiteaHandler();
@@ -147,6 +233,8 @@ public sealed class GiteaApiClientTests
 
         public string? Authorization { get; private set; }
 
+        public string? LastBody { get; private set; }
+
         public void Map(
             string path,
             string responseBody,
@@ -156,7 +244,7 @@ public sealed class GiteaApiClientTests
             _responses[path] = new StubResponse(responseBody, statusCode, headers ?? []);
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
@@ -164,12 +252,17 @@ public sealed class GiteaApiClientTests
             Requests.Add(request.RequestUri);
             Authorization = request.Headers.Authorization?.ToString();
 
+            if (request.Content is not null)
+            {
+                LastBody = await request.Content.ReadAsStringAsync(cancellationToken);
+            }
+
             if (!_responses.TryGetValue(request.RequestUri.AbsolutePath, out var response))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+                return new HttpResponseMessage(HttpStatusCode.NotFound)
                 {
                     Content = new StringContent("{}", Encoding.UTF8, "application/json"),
-                });
+                };
             }
 
             var message = new HttpResponseMessage(response.StatusCode)
@@ -182,7 +275,7 @@ public sealed class GiteaApiClientTests
                 message.Headers.TryAddWithoutValidation(header.Name, header.Value);
             }
 
-            return Task.FromResult(message);
+            return message;
         }
 
         private sealed record StubResponse(
