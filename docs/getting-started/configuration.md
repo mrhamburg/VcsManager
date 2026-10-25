@@ -148,7 +148,7 @@ and pass them to `UseProvider`.
 
 | Provider | Required keys | Optional keys |
 | --- | --- | --- |
-| GitHub | `token` | `base.url`, `default.owner` |
+| GitHub | `token` | `base.url`, `default.owner`, `request.timeout` |
 | GitLab | `token` | `base.url`, `default.namespace` |
 | Azure DevOps | `organization.url`, `personal.access.token` | `default.project`, `api.version` |
 | Gitea | `base.url`, `token` | `default.owner` |

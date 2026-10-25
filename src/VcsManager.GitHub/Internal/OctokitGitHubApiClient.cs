@@ -68,6 +68,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         var treeItems = new List<NewTreeItem>(request.Files.Count);
         foreach (var file in request.Files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var blob = await _client.Git.Blob.Create(
                 owner,
                 name,
@@ -86,6 +87,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             });
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var newTree = new NewTree();
         foreach (var treeItem in treeItems)
         {
@@ -93,11 +95,13 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         }
 
         var tree = await _client.Git.Tree.Create(owner, name, newTree);
+        cancellationToken.ThrowIfCancellationRequested();
         var commit = await _client.Git.Commit.Create(
             owner,
             name,
             new NewCommit(request.CommitMessage ?? "Initial commit", tree.Sha));
 
+        cancellationToken.ThrowIfCancellationRequested();
         await _client.Git.Reference.Create(
             owner,
             name,
@@ -278,6 +282,8 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         string name,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         try
         {
             var references = await _client.Git.Reference.GetAll(owner, name);

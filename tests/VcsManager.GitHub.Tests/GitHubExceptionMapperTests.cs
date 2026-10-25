@@ -79,6 +79,21 @@ public sealed class GitHubExceptionMapperTests
         Assert.Same(exception, mapped.InnerException);
     }
 
+    [Theory]
+    [InlineData(typeof(TaskCanceledException))]
+    [InlineData(typeof(OperationCanceledException))]
+    public void MapOperation_RequestTimeout_MapsToTransientProviderException(Type exceptionType)
+    {
+        var exception = (Exception)Activator.CreateInstance(exceptionType, "A timeout occurred")!;
+
+        var mapped = GitHubExceptionMapper.MapOperation(exception, "ListRepositories");
+
+        var providerException = Assert.IsType<VcsProviderException>(mapped);
+        Assert.True(providerException.IsTransient);
+        Assert.Contains("timed out", providerException.Message);
+        Assert.Same(exception, providerException.InnerException);
+    }
+
     [Fact]
     public void MapOperation_VcsException_IsNotRewrapped()
     {

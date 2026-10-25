@@ -38,6 +38,36 @@ public sealed class GitHubPullRequestTests
         Assert.True(pullRequest.IsDraft);
     }
 
+    [Fact]
+    public async Task CreatePullRequest_WithPaddedValues_SendsTrimmedValues()
+    {
+        var (provider, client) = CreateProvider();
+        var request = new CreatePullRequestRequest
+        {
+            Title = "  Test pull request  ",
+            SourceBranch = " feature ",
+            TargetBranch = " main ",
+        };
+
+        client.CreatePullRequestAsync(
+                "test-owner",
+                "test-repo",
+                Arg.Any<CreatePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.PullRequest());
+
+        await provider.CreatePullRequestAsync(Repository(), request);
+
+        await client.Received(1).CreatePullRequestAsync(
+            "test-owner",
+            "test-repo",
+            Arg.Is<CreatePullRequestRequest>(value =>
+                value.Title == "Test pull request" &&
+                value.SourceBranch == "feature" &&
+                value.TargetBranch == "main"),
+            Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(PullRequestState.Open)]
     [InlineData(PullRequestState.Draft)]

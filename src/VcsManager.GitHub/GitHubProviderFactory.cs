@@ -1,3 +1,4 @@
+using System.Globalization;
 using VcsManager.Builder;
 
 namespace VcsManager.GitHub;
@@ -38,6 +39,18 @@ public sealed class GitHubProviderFactory : IVcsProviderFactory
         if (TryGetValue(configuration, "default.owner", out var defaultOwner))
         {
             options.DefaultOwner = defaultOwner;
+        }
+
+        if (TryGetValue(configuration, "request.timeout", out var requestTimeout))
+        {
+            if (!TimeSpan.TryParseExact(requestTimeout, "c", CultureInfo.InvariantCulture, out var timeout))
+            {
+                throw new ArgumentException(
+                    "The 'request.timeout' configuration setting must be a time span such as '00:01:40'.",
+                    nameof(configuration));
+            }
+
+            options.RequestTimeout = timeout;
         }
 
         return options;

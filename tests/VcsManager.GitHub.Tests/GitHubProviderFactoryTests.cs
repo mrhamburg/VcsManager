@@ -74,6 +74,42 @@ public sealed class GitHubProviderFactoryTests
     }
 
     [Fact]
+    public void MapConfiguration_WithRequestTimeout_MapsTimeout()
+    {
+        var configuration = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["request.timeout"] = "00:00:30",
+        };
+
+        var options = GitHubProviderFactory.MapConfiguration(configuration);
+
+        Assert.Equal(TimeSpan.FromSeconds(30), options.RequestTimeout);
+    }
+
+    [Fact]
+    public void MapConfiguration_WithoutRequestTimeout_UsesDefault()
+    {
+        var options = GitHubProviderFactory.MapConfiguration(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+
+        Assert.Equal(TimeSpan.FromSeconds(100), options.RequestTimeout);
+    }
+
+    [Fact]
+    public void MapConfiguration_WithInvalidRequestTimeout_ThrowsArgumentException()
+    {
+        var configuration = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["request.timeout"] = "soon",
+        };
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => GitHubProviderFactory.MapConfiguration(configuration));
+
+        Assert.Contains("request.timeout", exception.Message);
+    }
+
+    [Fact]
     public void OctokitClient_UsesDefaultBaseAddress()
     {
         var client = new OctokitGitHubApiClient(new GitHubOptions { Token = "test-token" });

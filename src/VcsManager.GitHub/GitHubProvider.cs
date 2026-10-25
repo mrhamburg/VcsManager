@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using VcsManager.GitHub.Internal;
 using VcsManager.Internal;
 
@@ -6,7 +7,7 @@ namespace VcsManager.GitHub;
 /// <summary>
 /// GitHub implementation of <see cref="IVcsProvider"/>.
 /// </summary>
-public sealed class GitHubProvider : IVcsProvider
+public sealed partial class GitHubProvider : IVcsProvider
 {
     private readonly IGitHubApiClient _client;
     private readonly GitHubOptions _options;
@@ -36,9 +37,13 @@ public sealed class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ValidateCreateRepositoryRequest(request);
+        request = NormalizeCreateRepositoryRequest(request);
 
         var owner = NormalizeOwner(request.Owner) ?? NormalizeOwner(_options.DefaultOwner);
+        if (owner is not null)
+        {
+            RequirePathSegment(owner, "The repository owner", nameof(request));
+        }
 
         try
         {
@@ -253,7 +258,7 @@ public sealed class GitHubProvider : IVcsProvider
     {
         ArgumentNullException.ThrowIfNull(request);
         var (owner, name) = ResolveRepository(repository);
-        ValidateCreatePullRequestRequest(request);
+        request = NormalizeCreatePullRequestRequest(request);
 
         try
         {
@@ -509,20 +514,28 @@ public sealed class GitHubProvider : IVcsProvider
                 nameof(repository));
         }
 
-        var name = RequireValue(repository.Name, "A repository name is required.", nameof(repository));
+        var name = RequirePathSegment(
+            RequireValue(repository.Name, "A repository name is required.", nameof(repository)),
+            "The repository name",
+            nameof(repository));
         var owner = string.IsNullOrWhiteSpace(repository.Owner)
             ? _options.DefaultOwner
             : repository.Owner;
 
-        return (RequireValue(
+        var ownerValue = RequireValue(
             owner,
             "A repository owner is required for GitHub. Set RepositoryRef.Owner or GitHubOptions.DefaultOwner.",
-            nameof(repository)), name);
+            nameof(repository));
+
+        return (RequirePathSegment(ownerValue, "The repository owner", nameof(repository)), name);
     }
 
-    private static void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
+    private static CreateRepositoryRequest NormalizeCreateRepositoryRequest(CreateRepositoryRequest request)
     {
-        RequireValue(request.Name, "A repository name is required.", nameof(request));
+        var name = RequirePathSegment(
+            RequireValue(request.Name, "A repository name is required.", nameof(request)),
+            "The repository name",
+            nameof(request));
 
         if (!string.IsNullOrWhiteSpace(request.Project))
         {
@@ -530,6 +543,8 @@ public sealed class GitHubProvider : IVcsProvider
                 "GitHub does not support the Project field on CreateRepositoryRequest.",
                 nameof(request));
         }
+
+        return request with { Name = name };
     }
 
     private static void ValidateRepositoryQuery(RepositoryQuery query)
@@ -542,11 +557,14 @@ public sealed class GitHubProvider : IVcsProvider
         }
     }
 
-    private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
+    private static CreatePullRequestRequest NormalizeCreatePullRequestRequest(CreatePullRequestRequest request)
     {
-        RequireValue(request.Title, "A pull request title is required.", nameof(request));
-        RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
-        RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
+        return request with
+        {
+            Title = RequireValue(request.Title, "A pull request title is required.", nameof(request)),
+            SourceBranch = RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
+            TargetBranch = RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
+        };
     }
 
     private static void ValidatePullRequestNumber(int number)
@@ -595,6 +613,21 @@ public sealed class GitHubProvider : IVcsProvider
 
         return value.Trim();
     }
+
+    private static string RequirePathSegment(string value, string description, string parameterName)
+    {
+        if (value is "." or ".." || !PathSegmentPattern().IsMatch(value))
+        {
+            throw new ArgumentException(
+                $"{description} may contain only letters, digits, '.', '_' and '-', and cannot be '.' or '..'.",
+                parameterName);
+        }
+
+        return value;
+    }
+
+    [GeneratedRegex("^[A-Za-z0-9._-]+$")]
+    private static partial Regex PathSegmentPattern();
 
     private static RepositoryRef RepositoryOf(string owner, string name)
     {

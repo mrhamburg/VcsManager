@@ -94,6 +94,87 @@ public sealed class GitHubRepositoryTests
             new CreateRepositoryRequest { Name = " " }));
     }
 
+    [Theory]
+    [InlineData("bad/name")]
+    [InlineData("bad name")]
+    [InlineData("bad?name")]
+    [InlineData("bad%2Fname")]
+    [InlineData("bad\\name")]
+    [InlineData(".")]
+    [InlineData("..")]
+    public async Task CreateRepository_WithInvalidName_ThrowsArgumentException(string name)
+    {
+        var (provider, client) = CreateProvider();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.CreateRepositoryAsync(new CreateRepositoryRequest { Name = name }));
+
+        await client.DidNotReceiveWithAnyArgs().CreateRepositoryAsync(
+            default,
+            default!,
+            default);
+    }
+
+    [Theory]
+    [InlineData("bad/owner")]
+    [InlineData("bad owner")]
+    [InlineData("..")]
+    public async Task CreateRepository_WithInvalidOwner_ThrowsArgumentException(string owner)
+    {
+        var (provider, _) = CreateProvider();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => provider.CreateRepositoryAsync(
+            new CreateRepositoryRequest { Name = "test-repo", Owner = owner }));
+    }
+
+    [Theory]
+    [InlineData("test-owner", "bad/name")]
+    [InlineData("test-owner", "bad name")]
+    [InlineData("test-owner", "..")]
+    [InlineData("test-owner", ".")]
+    [InlineData("bad/owner", "test-repo")]
+    [InlineData("bad?owner", "test-repo")]
+    [InlineData("..", "test-repo")]
+    public async Task GetRepository_WithInvalidPathSegment_ThrowsArgumentException(string owner, string name)
+    {
+        var (provider, client) = CreateProvider();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => provider.GetRepositoryAsync(
+            new RepositoryRef { Owner = owner, Name = name }));
+
+        await client.DidNotReceiveWithAnyArgs().GetRepositoryAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task GetRepository_WithInvalidDefaultOwner_ThrowsArgumentException()
+    {
+        var (provider, _) = CreateProvider(new GitHubOptions
+        {
+            Token = "test-token",
+            DefaultOwner = "bad/owner",
+        });
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.GetRepositoryAsync(new RepositoryRef { Name = "test-repo" }));
+    }
+
+    [Fact]
+    public async Task CreateRepository_WithPaddedName_SendsTrimmedName()
+    {
+        var (provider, client) = CreateProvider();
+        var request = new CreateRepositoryRequest { Name = "  test-repo  ", Owner = "test-org" };
+
+        client.CreateRepositoryAsync("test-org", Arg.Any<CreateRepositoryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(TestData.Repository(owner: "test-org"));
+
+        await provider.CreateRepositoryAsync(request);
+
+        await client.Received(1).CreateRepositoryAsync(
+            "test-org",
+            Arg.Is<CreateRepositoryRequest>(value => value.Name == "test-repo"),
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task CreateRepository_InternalVisibilityUnsupported_ThrowsUnsupportedOperation()
     {

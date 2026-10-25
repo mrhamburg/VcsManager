@@ -77,4 +77,36 @@ public sealed class VcsProviderBuilderExtensionsTests
             Environment.SetEnvironmentVariable($"{prefix}_GITHUB_TOKEN", null);
         }
     }
+
+    [Fact]
+    public void WithGitHub_RequestTimeout_RoundTripsThroughSettings()
+    {
+        IReadOnlyDictionary<string, string>? captured = null;
+        var builder = new VcsProviderBuilder()
+            .WithGitHub(options =>
+            {
+                options.Token = "test-token";
+                options.RequestTimeout = TimeSpan.FromSeconds(30);
+            })
+            .RegisterProvider(new CapturingFactory(settings => captured = settings));
+
+        builder.Build();
+
+        Assert.NotNull(captured);
+        Assert.Equal("00:00:30", captured["request.timeout"]);
+
+        var mapped = GitHubProviderFactory.MapConfiguration(captured);
+        Assert.Equal(TimeSpan.FromSeconds(30), mapped.RequestTimeout);
+    }
+
+    private sealed class CapturingFactory(Action<IReadOnlyDictionary<string, string>> capture) : IVcsProviderFactory
+    {
+        public string ProviderName => "github";
+
+        public IVcsProvider Create(IReadOnlyDictionary<string, string> configuration)
+        {
+            capture(configuration);
+            return new GitHubProviderFactory().Create(configuration);
+        }
+    }
 }

@@ -72,9 +72,12 @@ the factory, then supply the selection and settings through `FromEnvironment`,
 | `token` | Yes | — | Personal access token. |
 | `base.url` | No | `https://api.github.com` | GitHub REST API base URL. |
 | `default.owner` | No | `null` | Owner or organization used when a request does not specify one. |
+| `request.timeout` | No | `00:01:40` | Timeout for one GitHub HTTP request. Use the `hh:mm:ss` time span format. The value must be positive. |
 
 `GitHubOptions.RequestTimeout` bounds one GitHub HTTP request and defaults to
-100 seconds. Octokit does not accept a cancellation token on every operation, so
+100 seconds. Set it with the `request.timeout` key in environment variables,
+YAML, or `UseProvider`. The fluent `WithGitHub` method writes the same key. A
+request that exceeds the timeout fails with a transient `VcsProviderException`. Octokit does not accept a cancellation token on every operation, so
 caller cancellation is best-effort. The request timeout limits in-flight work
 when a timeout layer expires or the caller cancels.
 
@@ -132,7 +135,12 @@ returns that visible subset even when the owner has more repositories.
 ## Repository addressing
 
 GitHub repositories use `{owner}/{name}`. `RepositoryRef.Owner` is required for
-get, delete, and exists operations unless `DefaultOwner` is configured.
+get, delete, and exists operations unless `DefaultOwner` is configured. Owner and
+repository names may contain only letters, digits, `.`, `_`, and `-`. The values
+`.` and `..` are not valid. The provider rejects other values with an
+`ArgumentException` before it sends a request. The provider trims leading and
+trailing whitespace from names, pull request titles, and branch names before it
+sends them.
 `RepositoryRef.Project` is not meaningful on GitHub and is rejected with an
 `ArgumentException` instead of being ignored.
 

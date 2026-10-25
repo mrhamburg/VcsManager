@@ -133,6 +133,10 @@ internal static class GitHubExceptionMapper
                 $"{message}: {timeout.Message}",
                 timeout,
                 isTransient: true),
+            OperationCanceledException canceled => new VcsProviderException(
+                $"{message}: the request timed out.",
+                canceled,
+                isTransient: true),
             _ => new VcsProviderException($"{message}: {exception.Message}", exception),
         };
     }

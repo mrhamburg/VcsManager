@@ -1,3 +1,4 @@
+using System.Globalization;
 using VcsManager.Builder;
 
 namespace VcsManager.GitHub;
@@ -50,6 +51,8 @@ public static class VcsProviderBuilderExtensions
             {
                 settings["default.owner"] = options.DefaultOwner;
             }
+
+            settings["request.timeout"] = options.RequestTimeout.ToString("c", CultureInfo.InvariantCulture);
         });
 
         return builder;
