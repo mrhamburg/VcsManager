@@ -38,3 +38,5 @@ DocumentIndex*.json
 # Mac
 .DS_Store
 Thumbs.db
+# Task tracking for local agent work
+.ai/

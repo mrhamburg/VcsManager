@@ -174,8 +174,8 @@ public sealed class TimeoutLayer : IVcsProviderLayer
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException(
-                    $"{operationName} did not complete within {options.Timeout}.");
+                var message = $"{operationName} did not complete within {options.Timeout}.";
+                throw new VcsProviderException(message, new TimeoutException(message), isTransient: true);
             }
         }
     }

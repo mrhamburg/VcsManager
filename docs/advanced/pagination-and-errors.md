@@ -78,7 +78,7 @@ Every provider failure derives from `VcsProviderException`:
 
 | Exception | Meaning | Useful properties |
 | --- | --- | --- |
-| `VcsProviderException` | Base type for provider failures. | None |
+| `VcsProviderException` | Base type for provider failures. | `IsTransient` |
 | `VcsNotFoundException` | A resource does not exist. | `Resource` |
 | `RepositoryNotFoundException` | A repository does not exist. | `Owner`, `Project`, `Name` |
 | `PullRequestNotFoundException` | A pull request does not exist. | `Repository`, `Number` |
@@ -99,7 +99,7 @@ Every provider failure derives from `VcsProviderException`:
 | 409 Conflict | `VcsConflictException` |
 | 422 Unprocessable Entity | `VcsConflictException` or `VcsProviderException` |
 | 429 Too Many Requests | `VcsRateLimitException` |
-| 5xx or network failure | `VcsProviderException` |
+| 5xx or network failure | `VcsProviderException` with `IsTransient = true` |
 
 ### Provider nuances
 

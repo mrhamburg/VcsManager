@@ -63,10 +63,12 @@ internal static class GiteaExceptionMapper
             GiteaApiException api => MapApiException(api, message, notFound),
             HttpRequestException http => new VcsProviderException(
                 $"{message}: {http.Message}",
-                http),
+                http,
+                isTransient: true),
             TimeoutException timeout => new VcsProviderException(
                 $"{message}: {timeout.Message}",
-                timeout),
+                timeout,
+                isTransient: true),
             JsonException json => new VcsProviderException(
                 $"{message}: the response was not valid JSON.",
                 json),
@@ -111,7 +113,8 @@ internal static class GiteaExceptionMapper
                 exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
                 $"{message}{detail}",
-                exception),
+                exception,
+                isTransient: true),
             _ => new VcsProviderException(
                 $"{message}{detail}",
                 exception),

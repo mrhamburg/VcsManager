@@ -1,22 +1,14 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+using VcsManager.Internal;
 
 namespace VcsManager.Gitea.Internal;
 
 internal sealed class GiteaApiClient : IGiteaApiClient
 {
     private const string ProductName = "VcsManager";
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 
     private readonly HttpClient _client;
     private readonly bool _disposeClient;
@@ -37,7 +29,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
 
         _client = CreateClient(options, handler, disposeHandler);
         _disposeClient = true;
-        BaseAddress = _client.BaseAddress!;
+        BaseAddress = _client.BaseAddress ?? options.CreateApiBaseAddress();
     }
 
     internal GiteaApiClient(GiteaOptions options, HttpClient client)
@@ -49,7 +41,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         _client = client;
         _disposeClient = false;
         ConfigureClient(_client, options);
-        BaseAddress = _client.BaseAddress!;
+        BaseAddress = _client.BaseAddress ?? options.CreateApiBaseAddress();
     }
 
     internal Uri BaseAddress { get; }
@@ -69,9 +61,30 @@ internal sealed class GiteaApiClient : IGiteaApiClient
             DefaultBranch = request.DefaultBranch,
         };
 
-        var path = ownerInfo.IsOrganization
-            ? $"orgs/{Encode(owner)}/repos"
-            : "user/repos";
+        string path;
+        if (ownerInfo.IsOrganization)
+        {
+            path = $"orgs/{Encode(owner)}/repos";
+        }
+        else
+        {
+            var currentUser = await SendAsync<GiteaUserResponse>(
+                HttpMethod.Get,
+                "user",
+                cancellationToken);
+
+            if (currentUser.Id != ownerInfo.Id)
+            {
+                throw new VcsUnsupportedOperationException(
+                    "gitea",
+                    "CreateRepository",
+                    new InvalidOperationException(
+                        $"Gitea cannot create a repository for user '{owner}' with the current token. " +
+                        "The token user must own the repository."));
+            }
+
+            path = "user/repos";
+        }
 
         var response = await SendAsync<GiteaCreateRepositoryRequest, GiteaRepositoryResponse>(
             HttpMethod.Post,
@@ -138,7 +151,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         if (search)
         {
             var page = await SendSearchPageAsync<GiteaRepositoryResponse>(
-                AddQuery(path, parameters),
+                ProviderHttp.AddQuery(path, parameters),
                 cancellationToken);
 
             return new GiteaPage<GiteaRepository>(
@@ -148,7 +161,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         }
 
         var repositories = await SendPageAsync<GiteaRepositoryResponse>(
-            AddQuery(path, parameters),
+            ProviderHttp.AddQuery(path, parameters),
             cancellationToken);
 
         return new GiteaPage<GiteaRepository>(
@@ -215,7 +228,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         }
 
         var page = await SendPageAsync<GiteaPullRequestResponse>(
-            AddQuery(PullRequestPath(owner, repositoryName), parameters),
+            ProviderHttp.AddQuery(PullRequestPath(owner, repositoryName), parameters),
             cancellationToken);
 
         return new GiteaPage<GiteaPullRequest>(
@@ -340,7 +353,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     {
         using var request = new HttpRequestMessage(method, path)
         {
-            Content = JsonContent.Create(body, options: JsonOptions),
+            Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
         };
         using var response = await _client.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
@@ -355,7 +368,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     {
         using var request = new HttpRequestMessage(method, path)
         {
-            Content = JsonContent.Create(body, options: JsonOptions),
+            Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
         };
         using var response = await _client.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
@@ -402,7 +415,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
-        var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync(GetTypeInfo<T>(), cancellationToken);
 
         return result ?? throw new VcsProviderException(
             "Gitea returned an empty response body.");
@@ -418,24 +431,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw new GiteaApiException(response.StatusCode, body, GetRetryAfter(response));
-    }
-
-    private static TimeSpan? GetRetryAfter(HttpResponseMessage response)
-    {
-        var retryAfter = response.Headers.RetryAfter;
-        if (retryAfter?.Delta is { } delta)
-        {
-            return delta > TimeSpan.Zero ? delta : TimeSpan.Zero;
-        }
-
-        if (retryAfter?.Date is { } date)
-        {
-            var delay = date - DateTimeOffset.UtcNow;
-            return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
-        }
-
-        return null;
+        throw new GiteaApiException(response.StatusCode, body, ProviderHttp.GetRetryAfter(response));
     }
 
     private static bool HasNextPage(HttpResponseMessage response)
@@ -493,25 +489,6 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         }
     }
 
-    private static string AddQuery(
-        string path,
-        IReadOnlyDictionary<string, string> parameters)
-    {
-        var builder = new StringBuilder(path);
-        var separator = path.Contains('?') ? '&' : '?';
-
-        foreach (var parameter in parameters)
-        {
-            builder.Append(separator);
-            builder.Append(Uri.EscapeDataString(parameter.Key));
-            builder.Append('=');
-            builder.Append(Uri.EscapeDataString(parameter.Value));
-            separator = '&';
-        }
-
-        return builder.ToString();
-    }
-
     private static string RepositoryPath(string owner, string name)
     {
         return $"repos/{Encode(owner)}/{Encode(name)}";
@@ -530,6 +507,13 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     private static string Encode(string value)
     {
         return Uri.EscapeDataString(value.Trim());
+    }
+
+    private static JsonTypeInfo<T> GetTypeInfo<T>()
+    {
+        return GiteaJsonContext.Default.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
+            ?? throw new InvalidOperationException(
+                $"No JSON serialization metadata is registered for {typeof(T)}.");
     }
 
     private static string MapStateParameter(PullRequestState? state)

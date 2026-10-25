@@ -29,6 +29,52 @@ public class RetryLayerTests
     }
 
     [Fact]
+    public async Task RetriesProviderMarkedTransientFailure()
+    {
+        var calls = 0;
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls++;
+                return calls == 1
+                    ? Task.FromException<bool>(MappedTransient())
+                    : Task.FromResult(true);
+            });
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 2)).Wrap(inner);
+
+        var result = await provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" });
+
+        Assert.True(result);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task DoesNotRetryUnmarkedProviderFailure()
+    {
+        var calls = 0;
+        var exception = new VcsProviderException(
+            "bad request",
+            new InvalidOperationException("provider rejected the request"));
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls++;
+                return Task.FromException<bool>(exception);
+            });
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 3)).Wrap(inner);
+
+        var thrown = await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
+
+        Assert.Same(exception, thrown);
+        Assert.Equal(1, calls);
+    }
+
+    [Fact]
     public async Task DoesNotRetryNotFound()
     {
         var calls = 0;
@@ -253,5 +299,13 @@ public class RetryLayerTests
         return new VcsProviderException(
             "transient",
             new HttpRequestException("transient", null, statusCode));
+    }
+
+    private static VcsProviderException MappedTransient()
+    {
+        return new VcsProviderException(
+            "service unavailable",
+            new InvalidOperationException("provider returned HTTP 503"),
+            isTransient: true);
     }
 }

@@ -73,6 +73,11 @@ the factory, then supply the selection and settings through `FromEnvironment`,
 | `base.url` | No | `https://api.github.com` | GitHub REST API base URL. |
 | `default.owner` | No | `null` | Owner or organization used when a request does not specify one. |
 
+`GitHubOptions.RequestTimeout` bounds one GitHub HTTP request and defaults to
+100 seconds. Octokit does not accept a cancellation token on every operation, so
+caller cancellation is best-effort. The request timeout limits in-flight work
+when a timeout layer expires or the caller cancels.
+
 ## GitHub Enterprise Server
 
 Set `BaseUrl` to the server REST API URL, including the API path:

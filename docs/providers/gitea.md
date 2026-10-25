@@ -152,6 +152,8 @@ available.
 `CreateRepositoryAsync` requires an owner from `Owner` or `DefaultOwner`. It uses
 `POST /orgs/{org}/repos` for an organization and `POST /user/repos` for a user.
 The user endpoint creates the repository under the authenticated token's account.
+When the owner is a user, the provider verifies that the owner is the token user
+and throws `VcsUnsupportedOperationException` for any other user.
 
 `Description`, `DefaultBranch`, and `InitializeWithReadme` map to the Gitea
 create-repository fields. `InitializeWithReadme` creates an initial commit.

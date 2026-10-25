@@ -108,10 +108,14 @@ internal static class AzureDevOpsExceptionMapper
             TeamFoundationServerUnauthorizedException unauthorized => new VcsAuthenticationException(
                 $"{message} {unauthorized.Message}".TrimEnd(),
                 unauthorized),
-            HttpRequestException http => new VcsProviderException($"{message} {http.Message}".TrimEnd(), http),
+            HttpRequestException http => new VcsProviderException(
+                $"{message} {http.Message}".TrimEnd(),
+                http,
+                isTransient: true),
             TimeoutException timeout => new VcsProviderException(
                 $"{message} {timeout.Message}".TrimEnd(),
-                timeout),
+                timeout,
+                isTransient: true),
             _ => new VcsProviderException($"{message} {exception.Message}".TrimEnd(), exception),
         };
     }
@@ -147,7 +151,8 @@ internal static class AzureDevOpsExceptionMapper
                 exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
                 $"{message}{detail}",
-                exception),
+                exception,
+                isTransient: true),
             _ => new VcsProviderException($"{message}{detail}", exception),
         };
     }

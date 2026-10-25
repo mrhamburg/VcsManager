@@ -1,22 +1,14 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+using VcsManager.Internal;
 
 namespace VcsManager.GitLab.Internal;
 
 internal sealed class GitLabApiClient : IGitLabApiClient
 {
     private const string ProductName = "VcsManager";
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 
     private readonly HttpClient _client;
     private readonly bool _disposeClient;
@@ -37,7 +29,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
 
         _client = CreateClient(options, handler, disposeHandler);
         _disposeClient = true;
-        BaseAddress = _client.BaseAddress!;
+        BaseAddress = _client.BaseAddress ?? options.CreateApiBaseAddress();
     }
 
     internal GitLabApiClient(GitLabOptions options, HttpClient client)
@@ -49,7 +41,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         _client = client;
         _disposeClient = false;
         ConfigureClient(_client, options);
-        BaseAddress = _client.BaseAddress!;
+        BaseAddress = _client.BaseAddress ?? options.CreateApiBaseAddress();
     }
 
     internal Uri BaseAddress { get; }
@@ -136,7 +128,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         }
 
         var page = await SendPageAsync<GitLabProjectResponse>(
-            AddQuery(path, parameters),
+            ProviderHttp.AddQuery(path, parameters),
             cancellationToken);
 
         return new GitLabPage<GitLabProject>(
@@ -204,7 +196,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             parameters["target_branch"] = query.TargetBranch.Trim();
         }
 
-        var path = AddQuery(
+        var path = ProviderHttp.AddQuery(
             $"projects/{GitLabProjectPath.Encode(projectPath)}/merge_requests",
             parameters);
 
@@ -222,7 +214,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         MergePullRequestRequest request,
         CancellationToken cancellationToken)
     {
-        var commitMessage = BuildCommitMessage(request.CommitTitle, request.CommitMessage);
+        var commitMessage = ProviderHttp.BuildCommitMessage(request.CommitTitle, request.CommitMessage);
         var body = new GitLabMergeRequestMergeRequest
         {
             MergeCommitMessage = commitMessage,
@@ -333,7 +325,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
     {
         using var request = new HttpRequestMessage(method, path)
         {
-            Content = JsonContent.Create(body, options: JsonOptions),
+            Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
         };
         using var response = await _client.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
@@ -366,7 +358,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
-        var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync(GetTypeInfo<T>(), cancellationToken);
 
         return result ?? throw new VcsProviderException(
             "GitLab returned an empty response body.");
@@ -382,24 +374,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw new GitLabApiException(response.StatusCode, body, GetRetryAfter(response));
-    }
-
-    private static TimeSpan? GetRetryAfter(HttpResponseMessage response)
-    {
-        var retryAfter = response.Headers.RetryAfter;
-        if (retryAfter?.Delta is { } delta)
-        {
-            return delta > TimeSpan.Zero ? delta : TimeSpan.Zero;
-        }
-
-        if (retryAfter?.Date is { } date)
-        {
-            var delay = date - DateTimeOffset.UtcNow;
-            return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
-        }
-
-        return null;
+        throw new GitLabApiException(response.StatusCode, body, ProviderHttp.GetRetryAfter(response));
     }
 
     private static bool HasNextPage(HttpResponseMessage response)
@@ -431,23 +406,11 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         };
     }
 
-    private static string AddQuery(
-        string path,
-        IReadOnlyDictionary<string, string> parameters)
+    private static JsonTypeInfo<T> GetTypeInfo<T>()
     {
-        var builder = new StringBuilder(path);
-        var separator = path.Contains('?') ? '&' : '?';
-
-        foreach (var parameter in parameters)
-        {
-            builder.Append(separator);
-            builder.Append(Uri.EscapeDataString(parameter.Key));
-            builder.Append('=');
-            builder.Append(Uri.EscapeDataString(parameter.Value));
-            separator = '&';
-        }
-
-        return builder.ToString();
+        return GitLabJsonContext.Default.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
+            ?? throw new InvalidOperationException(
+                $"No JSON serialization metadata is registered for {typeof(T)}.");
     }
 
     private static string MapVisibility(VcsVisibility visibility)
@@ -479,21 +442,6 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             PullRequestState.Merged => "merged",
             _ => "all",
         };
-    }
-
-    private static string? BuildCommitMessage(string? title, string? message)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            return string.IsNullOrWhiteSpace(message) ? null : message.Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return title.Trim();
-        }
-
-        return $"{title.Trim()}\n\n{message.Trim()}";
     }
 
     private static GitLabProject MapProject(GitLabProjectResponse response)

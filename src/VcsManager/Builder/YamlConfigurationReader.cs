@@ -1,5 +1,4 @@
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.RepresentationModel;
 
 namespace VcsManager.Builder;
 
@@ -30,31 +29,36 @@ public static class YamlConfigurationReader
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(yaml);
 
-        var deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
-            .Build();
+        var stream = new YamlStream();
+        using (var reader = new StringReader(yaml))
+        {
+            stream.Load(reader);
+        }
 
-        var root = deserializer.Deserialize<Dictionary<string, object>>(yaml)
-            ?? throw new InvalidOperationException("YAML document is empty.");
+        if (stream.Documents.Count == 0 ||
+            stream.Documents[0].RootNode is not YamlMappingNode root)
+        {
+            throw new InvalidOperationException("YAML document is empty.");
+        }
 
-        if (!root.TryGetValue("provider", out var providerObject) ||
-            providerObject is not Dictionary<object, object> providers)
+        var providerNode = FindChild(root, "provider");
+        if (providerNode is not YamlMappingNode providers)
         {
             throw new InvalidOperationException(
                 "YAML must contain a top-level 'provider' key with a provider block.");
         }
 
-        if (providers.Count != 1)
+        if (providers.Children.Count != 1)
         {
             throw new InvalidOperationException(
-                $"Exactly one provider must be specified under 'provider'. Found {providers.Count}.");
+                $"Exactly one provider must be specified under 'provider'. Found {providers.Children.Count}.");
         }
 
-        var entry = providers.First();
-        var providerName = entry.Key.ToString() ?? string.Empty;
+        var entry = providers.Children.First();
+        var providerName = GetScalar(entry.Key);
         var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        if (entry.Value is Dictionary<object, object> providerSettings)
+        if (entry.Value is YamlMappingNode providerSettings)
         {
             Flatten(providerSettings, prefix: string.Empty, settings);
         }
@@ -67,24 +71,44 @@ public static class YamlConfigurationReader
     }
 
     private static void Flatten(
-        Dictionary<object, object> source,
+        YamlMappingNode source,
         string prefix,
         Dictionary<string, string> target)
     {
-        foreach (var entry in source)
+        foreach (var entry in source.Children)
         {
+            var keyValue = GetScalar(entry.Key);
             var key = string.IsNullOrEmpty(prefix)
-                ? entry.Key.ToString() ?? string.Empty
-                : $"{prefix}.{entry.Key}";
+                ? keyValue
+                : $"{prefix}.{keyValue}";
 
-            if (entry.Value is Dictionary<object, object> nested)
+            if (entry.Value is YamlMappingNode nested)
             {
                 Flatten(nested, key, target);
             }
-            else if (entry.Value is not null)
+            else if (entry.Value is YamlScalarNode { Value: { } value })
             {
-                target[key] = entry.Value.ToString() ?? string.Empty;
+                target[key] = value;
             }
         }
+    }
+
+    private static YamlNode? FindChild(YamlMappingNode node, string name)
+    {
+        foreach (var entry in node.Children)
+        {
+            if (entry.Key is YamlScalarNode { Value: { } value } &&
+                string.Equals(value, name, StringComparison.Ordinal))
+            {
+                return entry.Value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetScalar(YamlNode node)
+    {
+        return node is YamlScalarNode { Value: { } value } ? value : string.Empty;
     }
 }

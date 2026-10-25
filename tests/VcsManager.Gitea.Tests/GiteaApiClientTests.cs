@@ -289,6 +289,52 @@ public sealed class GiteaApiClientTests
         Assert.Contains("limit=5", handler.Requests[0].Query, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task CreateRepository_ForAuthenticatedUser_PostsToUserRepositories()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map("/api/v1/orgs/test-owner", "{}", HttpStatusCode.NotFound);
+        handler.Map("/api/v1/users/test-owner", """{"id": 5, "login": "test-owner"}""");
+        handler.Map("/api/v1/user", """{"id": 5, "login": "test-owner"}""");
+        handler.Map("/api/v1/user/repos", RepositoryJson);
+        await using var client = CreateClient(handler);
+
+        var repository = await client.CreateRepositoryAsync(
+            "test-owner",
+            new CreateRepositoryRequest
+            {
+                Name = "test-repository",
+                Visibility = VcsVisibility.Private,
+            },
+            CancellationToken.None);
+
+        Assert.Equal("test-owner/test-repository", repository.FullName);
+        Assert.Equal("/api/v1/user/repos", handler.Requests[^1].AbsolutePath);
+        Assert.NotNull(handler.LastBody);
+        Assert.Contains("\"name\":\"test-repository\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"private\":true", handler.LastBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateRepository_ForAnotherUser_ThrowsUnsupportedOperation()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map("/api/v1/orgs/other-user", "{}", HttpStatusCode.NotFound);
+        handler.Map("/api/v1/users/other-user", """{"id": 6, "login": "other-user"}""");
+        handler.Map("/api/v1/user", """{"id": 5, "login": "test-owner"}""");
+        await using var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<VcsUnsupportedOperationException>(
+            () => client.CreateRepositoryAsync(
+                "other-user",
+                new CreateRepositoryRequest { Name = "test-repository" },
+                CancellationToken.None));
+
+        Assert.DoesNotContain(
+            handler.Requests,
+            request => request.AbsolutePath == "/api/v1/user/repos");
+    }
+
     internal static GiteaApiClient CreateClient(HttpMessageHandler handler)
     {
         return new GiteaApiClient(

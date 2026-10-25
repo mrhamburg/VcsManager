@@ -38,7 +38,7 @@ public class ConcurrentLimiterLayerTests
     }
 
     [Fact]
-    public async Task ThrowsTimeoutException_WhenSlotIsNotAvailable()
+    public async Task ThrowsTransientProviderException_WhenSlotIsNotAvailable()
     {
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var inner = Substitute.For<IVcsProvider>();
@@ -60,8 +60,11 @@ public class ConcurrentLimiterLayerTests
 
         try
         {
-            await Assert.ThrowsAsync<TimeoutException>(
+            var exception = await Assert.ThrowsAsync<VcsProviderException>(
                 () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
+
+            Assert.True(exception.IsTransient);
+            Assert.IsType<TimeoutException>(exception.InnerException);
         }
         finally
         {

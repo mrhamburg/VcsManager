@@ -251,7 +251,7 @@ Both return `VcsProviderConfiguration` with `ProviderName` and `Settings`.
 
 | Options type | Properties |
 | --- | --- |
-| `GitHubOptions` | `Token`, `BaseUrl`, `DefaultOwner` |
+| `GitHubOptions` | `Token`, `BaseUrl`, `DefaultOwner`, `RequestTimeout` |
 | `GitLabOptions` | `Token`, `BaseUrl`, `DefaultNamespace` |
 | `AzureDevOpsOptions` | `OrganizationUrl`, `PersonalAccessToken`, `DefaultProject`, `ApiVersion` |
 | `GiteaOptions` | `BaseUrl`, `Token`, `DefaultOwner` |
@@ -308,7 +308,7 @@ public interface IVcsProviderLogger
 
 | Exception | Base | Properties |
 | --- | --- | --- |
-| `VcsProviderException` | `Exception` | None |
+| `VcsProviderException` | `Exception` | `IsTransient` |
 | `VcsNotFoundException` | `VcsProviderException` | `Resource` |
 | `RepositoryNotFoundException` | `VcsNotFoundException` | `Owner`, `Project`, `Name` |
 | `PullRequestNotFoundException` | `VcsNotFoundException` | `Repository`, `Number` |

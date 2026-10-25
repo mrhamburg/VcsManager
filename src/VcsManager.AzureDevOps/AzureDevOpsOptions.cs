@@ -69,7 +69,14 @@ public sealed class AzureDevOpsOptions
 
     internal Uri CreateOrganizationUri()
     {
-        return new Uri(OrganizationUrl!.Trim().TrimEnd('/') + "/", UriKind.Absolute);
+        var organizationUrl = OrganizationUrl;
+        if (string.IsNullOrWhiteSpace(organizationUrl))
+        {
+            throw new InvalidOperationException(
+                "AzureDevOpsOptions.Validate must run before the organization URL is used.");
+        }
+
+        return new Uri(organizationUrl.Trim().TrimEnd('/') + "/", UriKind.Absolute);
     }
 
     internal string GetOrganizationName()

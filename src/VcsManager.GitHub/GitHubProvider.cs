@@ -1,4 +1,5 @@
 using VcsManager.GitHub.Internal;
+using VcsManager.Internal;
 
 namespace VcsManager.GitHub;
 
@@ -107,7 +108,7 @@ public sealed class GitHubProvider : IVcsProvider
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        query = NormalizeRepositoryQuery(query ?? new RepositoryQuery());
+        query = QueryNormalization.Normalize(query ?? new RepositoryQuery());
         pagination ??= new PaginationOptions();
         ValidateRepositoryQuery(query);
 
@@ -289,7 +290,7 @@ public sealed class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        query = NormalizePullRequestQuery(query ?? new PullRequestQuery());
+        query = QueryNormalization.Normalize(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
         try
@@ -304,7 +305,7 @@ public sealed class GitHubProvider : IVcsProvider
             return new PagedResult<PullRequest>
             {
                 Items = page.Items
-                    .Where(pullRequest => MatchesPullRequestQuery(pullRequest, query))
+                    .Where(pullRequest => QueryMatcher.Matches(query, pullRequest.State, pullRequest.Author, pullRequest.SourceBranch, pullRequest.TargetBranch))
                     .Select(GitHubMapper.ToPullRequest)
                     .ToArray(),
                 Page = pagination.Page,
@@ -548,62 +549,9 @@ public sealed class GitHubProvider : IVcsProvider
             repository.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool MatchesPullRequestQuery(GitHubPullRequest pullRequest, PullRequestQuery query)
-    {
-        if (query.State is { } state && pullRequest.State != state)
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Author) &&
-            !string.Equals(pullRequest.Author, query.Author, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.SourceBranch) &&
-            !string.Equals(pullRequest.SourceBranch, query.SourceBranch, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.TargetBranch) &&
-            !string.Equals(pullRequest.TargetBranch, query.TargetBranch, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static RepositoryQuery NormalizeRepositoryQuery(RepositoryQuery query)
-    {
-        return query with
-        {
-            Owner = NormalizeOptional(query.Owner),
-            Project = NormalizeOptional(query.Project),
-            NameContains = NormalizeOptional(query.NameContains),
-        };
-    }
-
-    private static PullRequestQuery NormalizePullRequestQuery(PullRequestQuery query)
-    {
-        return query with
-        {
-            Author = NormalizeOptional(query.Author),
-            SourceBranch = NormalizeOptional(query.SourceBranch),
-            TargetBranch = NormalizeOptional(query.TargetBranch),
-        };
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    }
-
     private static string? NormalizeOwner(string? owner)
     {
-        return NormalizeOptional(owner);
+        return QueryNormalization.NormalizeOptional(owner);
     }
 
     private static string RequireValue(string? value, string message, string parameterName)

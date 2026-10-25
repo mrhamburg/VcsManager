@@ -127,10 +127,12 @@ internal static class GitHubExceptionMapper
             ApiException api => MapApiException(api, operation, message, notFound),
             HttpRequestException http => new VcsProviderException(
                 $"{message}: {http.Message}",
-                http),
+                http,
+                isTransient: true),
             TimeoutException timeout => new VcsProviderException(
                 $"{message}: {timeout.Message}",
-                timeout),
+                timeout,
+                isTransient: true),
             _ => new VcsProviderException($"{message}: {exception.Message}", exception),
         };
     }
@@ -166,7 +168,8 @@ internal static class GitHubExceptionMapper
                 exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
                 $"{message}: {exception.Message}",
-                exception),
+                exception,
+                isTransient: true),
             _ => new VcsProviderException($"{message}: {exception.Message}", exception),
         };
     }

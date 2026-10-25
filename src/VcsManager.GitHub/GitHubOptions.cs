@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace VcsManager.GitHub;
 
 /// <summary>
@@ -28,6 +30,14 @@ public sealed class GitHubOptions
     /// </summary>
     public string? DefaultOwner { get; set; }
 
+    /// <summary>
+    /// Gets or sets the timeout for one GitHub HTTP request. Defaults to 100 seconds.
+    /// Octokit does not accept a cancellation token on every operation, so this
+    /// value bounds an in-flight request when a caller cancels or a timeout layer expires.
+    /// </summary>
+    public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(100);
+
+    [MemberNotNull(nameof(Token))]
     internal void Validate()
     {
         if (string.IsNullOrWhiteSpace(Token))
@@ -50,6 +60,13 @@ public sealed class GitHubOptions
             throw new ArgumentException(
                 "The GitHub base URL must be an absolute HTTP or HTTPS URL.",
                 nameof(BaseUrl));
+        }
+
+        if (RequestTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "The GitHub request timeout must be positive.",
+                nameof(RequestTimeout));
         }
     }
 }

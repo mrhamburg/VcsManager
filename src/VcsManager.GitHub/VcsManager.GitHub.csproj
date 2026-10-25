@@ -8,6 +8,7 @@
     <PackageTags>vcs;git;github;dotnet</PackageTags>
     <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

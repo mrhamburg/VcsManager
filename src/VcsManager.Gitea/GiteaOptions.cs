@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace VcsManager.Gitea;
 
 /// <summary>
@@ -21,6 +23,7 @@ public sealed class GiteaOptions
     /// </summary>
     public string? DefaultOwner { get; set; }
 
+    [MemberNotNull(nameof(BaseUrl), nameof(Token))]
     internal void Validate()
     {
         if (string.IsNullOrWhiteSpace(BaseUrl))
@@ -48,7 +51,8 @@ public sealed class GiteaOptions
 
     internal Uri CreateApiBaseAddress()
     {
-        var baseUrl = BaseUrl!.Trim().TrimEnd('/');
+        Validate();
+        var baseUrl = BaseUrl.Trim().TrimEnd('/');
         if (!baseUrl.EndsWith("/api/v1", StringComparison.OrdinalIgnoreCase))
         {
             baseUrl += "/api/v1";

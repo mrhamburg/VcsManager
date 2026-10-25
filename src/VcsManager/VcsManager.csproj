@@ -9,10 +9,18 @@
     <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VcsManager.GitHub" />
+    <InternalsVisibleTo Include="VcsManager.GitLab" />
+    <InternalsVisibleTo Include="VcsManager.Gitea" />
+    <InternalsVisibleTo Include="VcsManager.AzureDevOps" />
   </ItemGroup>
 
   <ItemGroup>

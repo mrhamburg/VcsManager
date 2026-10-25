@@ -23,4 +23,23 @@ public class VcsProviderException : Exception
         : base(message, innerException)
     {
     }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VcsProviderException"/> class.
+    /// </summary>
+    /// <param name="message">The error message.</param>
+    /// <param name="innerException">The provider error that caused this exception.</param>
+    /// <param name="isTransient">
+    /// <see langword="true"/> when the operation can be retried safely.
+    /// </param>
+    public VcsProviderException(string message, Exception innerException, bool isTransient)
+        : base(message, innerException)
+    {
+        IsTransient = isTransient;
+    }
+
+    /// <summary>
+    /// Gets a value that indicates whether the operation can be retried safely.
+    /// </summary>
+    public bool IsTransient { get; }
 }

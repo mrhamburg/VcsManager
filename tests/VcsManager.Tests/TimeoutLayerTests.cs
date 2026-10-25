@@ -5,7 +5,7 @@ namespace VcsManager.Tests;
 public class TimeoutLayerTests
 {
     [Fact]
-    public async Task ThrowsTimeoutException_WhenOperationDoesNotComplete()
+    public async Task ThrowsTransientProviderException_WhenOperationDoesNotComplete()
     {
         var inner = Substitute.For<IVcsProvider>();
         inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
@@ -20,14 +20,16 @@ public class TimeoutLayerTests
             Timeout = TimeSpan.FromMilliseconds(50),
         }).Wrap(inner);
 
-        var exception = await Assert.ThrowsAsync<TimeoutException>(
+        var exception = await Assert.ThrowsAsync<VcsProviderException>(
             () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
 
+        Assert.True(exception.IsTransient);
+        Assert.IsType<TimeoutException>(exception.InnerException);
         Assert.Contains("RepositoryExists", exception.Message);
     }
 
     [Fact]
-    public async Task ThrowsTimeoutException_WhenOperationIgnoresCancellationToken()
+    public async Task ThrowsTransientProviderException_WhenOperationIgnoresCancellationToken()
     {
         var completion = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -40,9 +42,11 @@ public class TimeoutLayerTests
             Timeout = TimeSpan.FromMilliseconds(50),
         }).Wrap(inner);
 
-        var exception = await Assert.ThrowsAsync<TimeoutException>(
+        var exception = await Assert.ThrowsAsync<VcsProviderException>(
             () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
 
+        Assert.True(exception.IsTransient);
+        Assert.IsType<TimeoutException>(exception.InnerException);
         Assert.Contains("RepositoryExists", exception.Message);
     }
 

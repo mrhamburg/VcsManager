@@ -17,11 +17,13 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        options.Validate();
         _baseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
         _client = new GitHubClient(new ProductHeaderValue(ProductName), _baseAddress)
         {
-            Credentials = new Credentials(options.Token!),
+            Credentials = new Credentials(options.Token),
         };
+        _client.SetRequestTimeout(options.RequestTimeout);
     }
 
     public async Task<GitHubRepository> CreateRepositoryAsync(
@@ -98,7 +100,11 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             }
         }
 
-        var response = await _client.Connection.Get<List<Repository>>(BuildUri(path), parameters);
+        var response = await _client.Connection.Get<List<Repository>>(
+            BuildUri(path),
+            parameters,
+            "application/vnd.github+json",
+            cancellationToken);
         var items = response.Body.Select(MapRepository).ToArray();
 
         return new GitHubPage<GitHubRepository>(items, HasNextPage(response.HttpResponse));
@@ -147,7 +153,11 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         }
 
         var path = $"repos/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(name)}/pulls";
-        var response = await _client.Connection.Get<List<OctoPullRequest>>(BuildUri(path), parameters);
+        var response = await _client.Connection.Get<List<OctoPullRequest>>(
+            BuildUri(path),
+            parameters,
+            "application/vnd.github+json",
+            cancellationToken);
         var items = response.Body.Select(MapPullRequest).ToArray();
 
         return new GitHubPage<GitHubPullRequest>(items, HasNextPage(response.HttpResponse));

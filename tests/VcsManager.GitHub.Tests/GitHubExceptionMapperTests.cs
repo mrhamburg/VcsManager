@@ -60,6 +60,11 @@ public sealed class GitHubExceptionMapperTests
 
         Assert.IsType(expectedType, mapped);
         Assert.Same(exception, mapped.InnerException);
+
+        if (expectedType == typeof(VcsProviderException) && (int)statusCode >= 500)
+        {
+            Assert.True(((VcsProviderException)mapped).IsTransient);
+        }
     }
 
     [Fact]
@@ -69,7 +74,8 @@ public sealed class GitHubExceptionMapperTests
 
         var mapped = GitHubExceptionMapper.MapOperation(exception, "ListRepositories");
 
-        Assert.IsType<VcsProviderException>(mapped);
+        var providerException = Assert.IsType<VcsProviderException>(mapped);
+        Assert.True(providerException.IsTransient);
         Assert.Same(exception, mapped.InnerException);
     }
 

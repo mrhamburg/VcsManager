@@ -1,4 +1,5 @@
 using VcsManager.GitLab.Internal;
+using VcsManager.Internal;
 
 namespace VcsManager.GitLab;
 
@@ -102,7 +103,7 @@ public sealed class GitLabProvider : IVcsProvider
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        query = NormalizeRepositoryQuery(query ?? new RepositoryQuery());
+        query = QueryNormalization.Normalize(query ?? new RepositoryQuery());
         pagination ??= new PaginationOptions();
 
         var owner = ResolveOptionalOwner(query.Owner);
@@ -295,7 +296,7 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
-        query = NormalizePullRequestQuery(query ?? new PullRequestQuery());
+        query = QueryNormalization.Normalize(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
         try
@@ -309,7 +310,7 @@ public sealed class GitLabProvider : IVcsProvider
             return new PagedResult<PullRequest>
             {
                 Items = page.Items
-                    .Where(mergeRequest => MatchesPullRequestQuery(mergeRequest, query))
+                    .Where(mergeRequest => QueryMatcher.Matches(query, mergeRequest.State, mergeRequest.Author, mergeRequest.SourceBranch, mergeRequest.TargetBranch))
                     .Select(GitLabMapper.ToPullRequest)
                     .ToArray(),
                 Page = pagination.Page,
@@ -470,7 +471,7 @@ public sealed class GitLabProvider : IVcsProvider
         return repository with
         {
             Owner = owner,
-            Project = NormalizeOptional(repository.Project),
+            Project = QueryNormalization.NormalizeOptional(repository.Project),
             Name = name,
         };
     }
@@ -480,7 +481,7 @@ public sealed class GitLabProvider : IVcsProvider
         return new RepositoryRef
         {
             Owner = owner,
-            Project = NormalizeOptional(project),
+            Project = QueryNormalization.NormalizeOptional(project),
             Name = name.Trim(),
         };
     }
@@ -526,54 +527,6 @@ public sealed class GitLabProvider : IVcsProvider
         }
     }
 
-    private static RepositoryQuery NormalizeRepositoryQuery(RepositoryQuery query)
-    {
-        return query with
-        {
-            Owner = NormalizeOptional(query.Owner),
-            Project = NormalizeOptional(query.Project),
-            NameContains = NormalizeOptional(query.NameContains),
-        };
-    }
-
-    private static PullRequestQuery NormalizePullRequestQuery(PullRequestQuery query)
-    {
-        return query with
-        {
-            Author = NormalizeOptional(query.Author),
-            SourceBranch = NormalizeOptional(query.SourceBranch),
-            TargetBranch = NormalizeOptional(query.TargetBranch),
-        };
-    }
-
-    private static bool MatchesPullRequestQuery(GitLabMergeRequest mergeRequest, PullRequestQuery query)
-    {
-        if (query.State is { } state && mergeRequest.State != state)
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Author) &&
-            !string.Equals(mergeRequest.Author, query.Author, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.SourceBranch) &&
-            !string.Equals(mergeRequest.SourceBranch, query.SourceBranch, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.TargetBranch) &&
-            !string.Equals(mergeRequest.TargetBranch, query.TargetBranch, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
     private static bool MatchesRepositoryQuery(GitLabProject project, RepositoryQuery query)
     {
         if (!query.IncludeArchived && project.IsArchived)
@@ -589,11 +542,6 @@ public sealed class GitLabProvider : IVcsProvider
         return string.IsNullOrWhiteSpace(query.NameContains) ||
             project.Path.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase) ||
             project.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static string RequireValue(string? value, string message, string parameterName)

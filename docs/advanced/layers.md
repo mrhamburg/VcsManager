@@ -76,9 +76,10 @@ Retry behavior:
 
 - Rate limits are retried. `VcsRateLimitException.RetryAfter` is used as the
   delay when present.
-- Transport failures that surface as an `HttpRequestException` with a 429 or
-  5xx status are retried. Provider responses that become `VcsProviderException`
-  are only retried when their inner exception is such an `HttpRequestException`.
+- Transport failures and HTTP 5xx responses are retried. Providers mark those
+  mapped `VcsProviderException` instances with `IsTransient = true`. A
+  `VcsProviderException` with an inner `HttpRequestException` that has a 429 or
+  5xx status is also retried.
 - `VcsConflictException` and `VcsUnsupportedOperationException` are not retried.
 - Canceled operations are not retried.
 - Merge is never retried because it is not automatically idempotent.
@@ -96,9 +97,10 @@ var provider = new VcsProviderBuilder()
     .Build();
 ```
 
-`TimeoutLayer` applies a deadline to each provider operation. It throws
-`TimeoutException` when the deadline expires and the caller did not cancel the
-operation. The default timeout is 10 seconds.
+`TimeoutLayer` applies a deadline to each provider operation. When the deadline
+expires and the caller did not cancel the operation, it throws
+`VcsProviderException` with `IsTransient = true` and an inner `TimeoutException`.
+The default timeout is 10 seconds.
 
 ## Concurrency limiter
 
@@ -117,6 +119,9 @@ var provider = new VcsProviderBuilder()
 | --- | --- | --- |
 | `MaxConcurrentRequests` | `10` | Maximum operations that run at the same time. |
 | `AcquireTimeout` | `null` | Maximum wait for a slot. `null` waits indefinitely. |
+
+When `AcquireTimeout` expires, the layer throws `VcsProviderException` with
+`IsTransient = true` and an inner `TimeoutException`.
 
 When `AcquireTimeout` expires, the layer throws `TimeoutException` unless the
 caller canceled the operation.

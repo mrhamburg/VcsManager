@@ -61,6 +61,11 @@ public sealed class GitLabExceptionMapperTests
 
         Assert.IsType(expectedType, mapped);
         Assert.Same(exception, mapped.InnerException);
+
+        if (expectedType == typeof(VcsProviderException) && (int)statusCode >= 500)
+        {
+            Assert.True(((VcsProviderException)mapped).IsTransient);
+        }
     }
 
     [Fact]

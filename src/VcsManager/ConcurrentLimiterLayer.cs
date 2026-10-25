@@ -200,8 +200,8 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException(
-                    $"Timed out after {acquireTimeout} waiting for a concurrency slot.");
+                var message = $"Timed out after {acquireTimeout} waiting for a concurrency slot.";
+                throw new VcsProviderException(message, new TimeoutException(message), isTransient: true);
             }
         }
     }

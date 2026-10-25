@@ -185,6 +185,11 @@ public sealed class RetryLayer : IVcsProviderLayer
                 return false;
             }
 
+            if (exception is VcsProviderException { IsTransient: true })
+            {
+                return options.RetryPredicate?.Invoke(exception) ?? true;
+            }
+
             if (exception is not VcsRateLimitException && !IsTransient(exception))
             {
                 return false;
@@ -221,7 +226,9 @@ public sealed class RetryLayer : IVcsProviderLayer
             if (options.JitterFactor > 0)
             {
                 var jitter = milliseconds * options.JitterFactor * ((Random.Shared.NextDouble() * 2) - 1);
-                milliseconds = Math.Max(0, milliseconds + jitter);
+                milliseconds = Math.Min(
+                    Math.Max(0, milliseconds + jitter),
+                    options.MaxDelay.TotalMilliseconds);
             }
 
             return TimeSpan.FromMilliseconds(milliseconds);

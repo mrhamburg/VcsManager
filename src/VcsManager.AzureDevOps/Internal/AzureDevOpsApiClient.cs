@@ -2,9 +2,10 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using Microsoft.VisualStudio.Services.Common;
+using VcsManager.Internal;
 
 namespace VcsManager.AzureDevOps.Internal;
 
@@ -12,15 +13,11 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
 {
     private const string ProductName = "VcsManager";
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private readonly GitHttpClient _gitClient;
     private readonly HttpClient _restClient;
     private readonly AzureDevOpsOptions _options;
     private readonly string _organization;
+    private readonly string _organizationUrl;
 
     public AzureDevOpsApiClient(AzureDevOpsOptions options)
         : this(options, CreateGitClient(options), CreateRestClient(options))
@@ -41,9 +38,12 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         _gitClient = gitClient;
         _restClient = restClient;
         _organization = options.GetOrganizationName();
+        _organizationUrl = options.OrganizationUrl
+            ?? throw new InvalidOperationException(
+                "AzureDevOpsOptions.OrganizationUrl must be set before the client is created.");
     }
 
-    internal Uri BaseAddress => _restClient.BaseAddress!;
+    internal Uri BaseAddress => _restClient.BaseAddress ?? _options.CreateOrganizationUri();
 
     internal AzureDevOpsOptions Options => _options;
 
@@ -117,7 +117,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             : $"{Uri.EscapeDataString(project.Trim())}/_apis/git/repositories";
 
         var response = await SendRestAsync<AzureDevOpsRepositoryListResponse>(
-            AddQuery(path, parameters),
+            ProviderHttp.AddQuery(path, parameters),
             cancellationToken);
 
         var items = response.Value
@@ -231,7 +231,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
                 DeleteSourceBranch = request.DeleteSourceBranch,
                 MergeStrategy = AzureDevOpsMapper.ToMergeStrategy(request.Method),
                 SquashMerge = request.Method == MergeMethod.Squash,
-                MergeCommitMessage = BuildCommitMessage(request.CommitTitle, request.CommitMessage),
+                MergeCommitMessage = ProviderHttp.BuildCommitMessage(request.CommitTitle, request.CommitMessage),
             },
         };
 
@@ -307,10 +307,10 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             throw new AzureDevOpsApiException(
                 response.StatusCode,
                 body,
-                GetRetryAfter(response));
+                ProviderHttp.GetRetryAfter(response));
         }
 
-        var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync(GetTypeInfo<T>(), cancellationToken);
 
         return result ?? throw new VcsProviderException(
             "Azure DevOps returned an empty response body.");
@@ -358,14 +358,21 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
     {
         return AzureDevOpsMapper.FromSdkPullRequest(
             pullRequest,
-            _options.OrganizationUrl!,
+            _organizationUrl,
             project,
             repositoryName);
     }
 
     private string BuildRepositoryWebUrl(string project, string name)
     {
-        return $"{_options.OrganizationUrl!.TrimEnd('/')}/{project}/_git/{name}";
+        return $"{_organizationUrl.TrimEnd('/')}/{project}/_git/{name}";
+    }
+
+    private static JsonTypeInfo<T> GetTypeInfo<T>()
+    {
+        return AzureDevOpsJsonContext.Default.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
+            ?? throw new InvalidOperationException(
+                $"No JSON serialization metadata is registered for {typeof(T)}.");
     }
 
     private static PullRequestStatus MapStatus(PullRequestState? state)
@@ -377,54 +384,5 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             PullRequestState.Merged => PullRequestStatus.Completed,
             _ => PullRequestStatus.All,
         };
-    }
-
-    private static string? BuildCommitMessage(string? title, string? message)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            return string.IsNullOrWhiteSpace(message) ? null : message.Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return title.Trim();
-        }
-
-        return $"{title.Trim()}\n\n{message.Trim()}";
-    }
-
-    private static TimeSpan? GetRetryAfter(HttpResponseMessage response)
-    {
-        var retryAfter = response.Headers.RetryAfter;
-        if (retryAfter?.Delta is { } delta)
-        {
-            return delta > TimeSpan.Zero ? delta : TimeSpan.Zero;
-        }
-
-        if (retryAfter?.Date is { } date)
-        {
-            var delay = date - DateTimeOffset.UtcNow;
-            return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
-        }
-
-        return null;
-    }
-
-    private static string AddQuery(string path, IReadOnlyDictionary<string, string> parameters)
-    {
-        var builder = new StringBuilder(path);
-        var separator = path.Contains('?') ? '&' : '?';
-
-        foreach (var parameter in parameters)
-        {
-            builder.Append(separator);
-            builder.Append(Uri.EscapeDataString(parameter.Key));
-            builder.Append('=');
-            builder.Append(Uri.EscapeDataString(parameter.Value));
-            separator = '&';
-        }
-
-        return builder.ToString();
     }
 }
