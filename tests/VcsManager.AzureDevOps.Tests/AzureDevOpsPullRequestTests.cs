@@ -248,6 +248,34 @@ public sealed class AzureDevOpsPullRequestTests
         Assert.Equal(1, result.Items[0].Number);
     }
 
+    [Fact]
+    public async Task ListPullRequests_WhenClientThrows_MapsProviderException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListPullRequestsAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<PullRequestQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<AzureDevOpsPage<AzureDevOpsPullRequest>>>(_ =>
+                throw new VcsProviderException("Service unavailable."));
+
+        await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.ListPullRequestsAsync(CreateRepositoryRef()));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DisposesClient()
+    {
+        var (provider, client) = CreateProvider();
+
+        await provider.DisposeAsync();
+
+        await client.Received(1).DisposeAsync();
+    }
+
     internal static RepositoryRef CreateRepositoryRef()
     {
         return new RepositoryRef

@@ -97,6 +97,25 @@ public sealed class AzureDevOpsApiClientTests
         Assert.True(page.HasNextPage);
     }
 
+    [Fact]
+    public async Task ListRepositories_WhenRestCallFails_ThrowsApiException()
+    {
+        var handler = new StubHttpMessageHandler(
+            "{\"message\":\"Unauthorized\"}",
+            HttpStatusCode.Unauthorized);
+        await using var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<AzureDevOpsApiException>(
+            () => client.ListRepositoriesAsync(
+                project: null,
+                new RepositoryQuery(),
+                new PaginationOptions(),
+                CancellationToken.None));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
+        Assert.Contains("Unauthorized", exception.ResponseBody, StringComparison.Ordinal);
+    }
+
     private static AzureDevOpsApiClient CreateClient(HttpMessageHandler handler)
     {
         var options = new AzureDevOpsOptions
@@ -117,7 +136,9 @@ public sealed class AzureDevOpsApiClientTests
         return new AzureDevOpsApiClient(options, gitClient, restClient);
     }
 
-    private sealed class StubHttpMessageHandler(string responseBody) : HttpMessageHandler
+    private sealed class StubHttpMessageHandler(
+        string responseBody,
+        HttpStatusCode statusCode = HttpStatusCode.OK) : HttpMessageHandler
     {
         public Uri? RequestUri { get; private set; }
 
@@ -127,7 +148,7 @@ public sealed class AzureDevOpsApiClientTests
         {
             RequestUri = request.RequestUri;
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
             });
