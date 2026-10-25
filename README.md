@@ -9,8 +9,8 @@ through a consistent API.
 ## Status
 
 The repository is under active development. The current milestone provides the
-solution scaffold and build baseline; provider implementations are not
-available yet.
+core contracts, builder, configuration readers, operational layers, tests, and
+a sample; provider implementations are not available yet.
 
 ## Project layout
 
@@ -49,6 +49,38 @@ dotnet pack src/VcsManager/VcsManager.csproj -c Release
 ```
 
 The core package ID is `VcsManager.Core`.
+
+## Sample
+
+The sample runs the full repository and pull request flow. In this milestone it
+uses the built-in in-memory `demo` provider. Provider packages are added in
+later milestones; when one is available, register its factory and set
+`VCS_PROVIDER` to its name.
+
+```bash
+cd samples/VcsManager.Samples
+VCS_PROVIDER=demo dotnet run
+```
+
+Optional owner:
+
+```bash
+VCS_PROVIDER=demo VCS_DEMO_OWNER=my-owner dotnet run
+```
+
+YAML configuration:
+
+```bash
+VCS_CONFIG_FILE=./sample.yaml dotnet run
+```
+
+```yaml
+provider:
+  demo: {}
+```
+
+The sample exits with status `1` when no configuration is present, before it
+runs any operation.
 
 ## Configuration
 
