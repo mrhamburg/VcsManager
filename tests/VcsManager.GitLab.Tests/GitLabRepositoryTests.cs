@@ -273,6 +273,192 @@ public sealed class GitLabRepositoryTests
             }));
     }
 
+    [Fact]
+    public async Task ListRepositories_WithoutNamespace_ListsUserProjects()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListProjectsAsync(
+                null,
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage([TestData.Project()], totalCount: 1));
+
+        var result = await provider.ListRepositoriesAsync();
+
+        Assert.Single(result.Items);
+        Assert.Equal(1, result.TotalCount);
+        await client.Received(1).ListProjectsAsync(
+            null,
+            Arg.Any<RepositoryQuery>(),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ListRepositories_WithOwner_ListsGroupProjects()
+    {
+        var (provider, client) = CreateProvider();
+        var query = new RepositoryQuery { Owner = "test-group" };
+
+        client.ListProjectsAsync(
+                "test-group",
+                query,
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage([]));
+
+        await provider.ListRepositoriesAsync(query);
+
+        await client.Received(1).ListProjectsAsync(
+            "test-group",
+            query,
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ListRepositories_WithSubgroup_ListsNestedNamespace()
+    {
+        var (provider, client) = CreateProvider();
+        var query = new RepositoryQuery { Owner = "test-group", Project = "subgroup" };
+
+        client.ListProjectsAsync(
+                "test-group/subgroup",
+                query,
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage([]));
+
+        await provider.ListRepositoriesAsync(query);
+
+        await client.Received(1).ListProjectsAsync(
+            "test-group/subgroup",
+            query,
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ListRepositories_WithDefaultNamespace_UsesConfiguredNamespace()
+    {
+        var (provider, client) = CreateProvider(new GitLabOptions
+        {
+            Token = "test-token",
+            DefaultNamespace = "default-group",
+        });
+
+        client.ListProjectsAsync(
+                "default-group",
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage([]));
+
+        await provider.ListRepositoriesAsync();
+
+        await client.Received(1).ListProjectsAsync(
+            "default-group",
+            Arg.Any<RepositoryQuery>(),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ListRepositories_MapsPaginationMetadata()
+    {
+        var (provider, client) = CreateProvider();
+        var pagination = new PaginationOptions { Page = 2, PageSize = 5 };
+
+        client.ListProjectsAsync(
+                null,
+                Arg.Any<RepositoryQuery>(),
+                pagination,
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage(
+                [TestData.Project()],
+                hasNextPage: true,
+                totalCount: 11));
+
+        var result = await provider.ListRepositoriesAsync(pagination: pagination);
+
+        Assert.Equal(2, result.Page);
+        Assert.Equal(5, result.PageSize);
+        Assert.True(result.HasNextPage);
+        Assert.Equal(11, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task ListRepositories_AppliesVisibilityNameAndArchivedFilters()
+    {
+        var (provider, client) = CreateProvider();
+        var query = new RepositoryQuery
+        {
+            NameContains = "alpha",
+            Visibility = VcsVisibility.Private,
+        };
+
+        client.ListProjectsAsync(
+                null,
+                query,
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage(
+            [
+                TestData.Project(name: "alpha"),
+                TestData.Project(name: "beta"),
+                TestData.Project(name: "alpha-archived", archived: true),
+                TestData.Project(name: "alpha-public", visibility: VcsVisibility.Public),
+            ]));
+
+        var result = await provider.ListRepositoriesAsync(query);
+
+        var repository = Assert.Single(result.Items);
+        Assert.Equal("alpha", repository.Name);
+    }
+
+    [Fact]
+    public async Task ListRepositories_IncludeArchived_ReturnsArchivedProjects()
+    {
+        var (provider, client) = CreateProvider();
+        var query = new RepositoryQuery { IncludeArchived = true };
+
+        client.ListProjectsAsync(
+                null,
+                query,
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage(
+            [
+                TestData.Project(name: "active"),
+                TestData.Project(name: "archived", archived: true),
+            ]));
+
+        var result = await provider.ListRepositoriesAsync(query);
+
+        Assert.Equal(2, result.Items.Count);
+    }
+
+    [Fact]
+    public async Task ListRepositories_AuthorizationFailure_ThrowsVcsAuthorizationException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListProjectsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<GitLabPage<GitLabProject>>>(_ => throw new GitLabApiException(
+                HttpStatusCode.Forbidden,
+                "Forbidden",
+                retryAfter: null));
+
+        await Assert.ThrowsAsync<VcsAuthorizationException>(
+            () => provider.ListRepositoriesAsync());
+    }
+
     private static CreateRepositoryRequest CreateRepositoryRequest()
     {
         return new CreateRepositoryRequest
