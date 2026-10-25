@@ -131,6 +131,81 @@ public sealed class GiteaApiClientTests
     }
 
     [Fact]
+    public async Task MergePullRequest_SendsMergeStyleAndReturnsRefreshedPullRequest()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map("/api/v1/repos/test-owner/test-repository/pulls/7/merge", "{}");
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository/pulls/7",
+            """
+            {
+              "id": 107,
+              "number": 7,
+              "title": "Merged change",
+              "state": "closed",
+              "merged": true,
+              "user": { "id": 2, "login": "test-user" },
+              "head": { "ref": "feature" },
+              "base": { "ref": "main" }
+            }
+            """);
+        await using var client = CreateClient(handler);
+
+        var merged = await client.MergePullRequestAsync(
+            "test-owner",
+            "test-repository",
+            7,
+            new MergePullRequestRequest
+            {
+                Method = MergeMethod.Squash,
+                DeleteSourceBranch = true,
+                CommitTitle = "Complete change",
+                CommitMessage = "Completed by VcsManager",
+            },
+            CancellationToken.None);
+
+        Assert.Equal(PullRequestState.Merged, merged.State);
+        Assert.Equal("/api/v1/repos/test-owner/test-repository/pulls/7/merge", handler.Requests[0].AbsolutePath);
+        Assert.Equal("/api/v1/repos/test-owner/test-repository/pulls/7", handler.Requests[1].AbsolutePath);
+        Assert.NotNull(handler.LastBody);
+        Assert.Contains("\"do\":\"squash\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"delete_branch_after_merge\":true", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"merge_title_field\":\"Complete change\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"merge_message_field\":\"Completed by VcsManager\"", handler.LastBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ClosePullRequest_SendsClosedState()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository/pulls/8",
+            """
+            {
+              "id": 108,
+              "number": 8,
+              "title": "Closed change",
+              "state": "closed",
+              "merged": false,
+              "user": { "id": 2, "login": "test-user" },
+              "head": { "ref": "feature" },
+              "base": { "ref": "main" }
+            }
+            """);
+        await using var client = CreateClient(handler);
+
+        var closed = await client.ClosePullRequestAsync(
+            "test-owner",
+            "test-repository",
+            8,
+            CancellationToken.None);
+
+        Assert.Equal(PullRequestState.Closed, closed.State);
+        Assert.NotNull(handler.LastBody);
+        Assert.Contains("\"state\":\"closed\"", handler.LastBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ListRepositories_ForOrganization_UsesOrganizationEndpoint()
     {
         var handler = new StubGiteaHandler();

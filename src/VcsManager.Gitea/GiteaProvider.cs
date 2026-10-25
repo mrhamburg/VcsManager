@@ -337,22 +337,141 @@ public sealed class GiteaProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> MergePullRequestAsync(
+    public async Task<PullRequest> MergePullRequestAsync(
         RepositoryRef repository,
         int number,
         MergePullRequestRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, name) = ResolveRepository(repository);
+        ValidatePullRequestNumber(number);
+        request ??= new MergePullRequestRequest();
+        ValidateMergeMethod(request.Method);
+        var resolved = RepositoryRefOf(owner, name);
+
+        GiteaPullRequest current;
+        try
+        {
+            current = await _client.GetPullRequestAsync(owner, name, number, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapPullRequest(
+                exception,
+                "MergePullRequest",
+                resolved,
+                number);
+        }
+
+        if (current.State == PullRequestState.Merged)
+        {
+            return GiteaMapper.ToPullRequest(current);
+        }
+
+        if (current.State == PullRequestState.Closed)
+        {
+            throw new VcsConflictException(
+                $"Pull request #{number} in repository '{resolved.Name}' is closed and cannot be merged.");
+        }
+
+        try
+        {
+            var merged = await _client.MergePullRequestAsync(
+                owner,
+                name,
+                number,
+                request,
+                cancellationToken);
+            return GiteaMapper.ToPullRequest(merged);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapPullRequest(
+                exception,
+                "MergePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> ClosePullRequestAsync(
+    public async Task<PullRequest> ClosePullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, name) = ResolveRepository(repository);
+        ValidatePullRequestNumber(number);
+        var resolved = RepositoryRefOf(owner, name);
+
+        GiteaPullRequest current;
+        try
+        {
+            current = await _client.GetPullRequestAsync(owner, name, number, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
+
+        if (current.State is PullRequestState.Closed or PullRequestState.Merged)
+        {
+            return GiteaMapper.ToPullRequest(current);
+        }
+
+        try
+        {
+            var closed = await _client.ClosePullRequestAsync(
+                owner,
+                name,
+                number,
+                cancellationToken);
+            return GiteaMapper.ToPullRequest(closed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
