@@ -83,8 +83,9 @@ Retry behavior:
 - `VcsConflictException` and `VcsUnsupportedOperationException` are not retried.
 - Canceled operations are not retried.
 - Merge is never retried because it is not automatically idempotent.
-- Create repository, delete repository, and create pull request are not
-  retried because a retry can duplicate the operation.
+- Create repository, seed repository, delete repository, and create pull
+  request are not retried because a retry can duplicate the operation.
+- A negative `RetryAfter` is treated as no delay.
 - Read operations and close are retried. Close is idempotent by contract.
 - A successful operation returns immediately; the layer does not retry it.
 

@@ -27,7 +27,7 @@ internal static class SeedRequestValidator
         foreach (var file in request.Files)
         {
             ArgumentNullException.ThrowIfNull(file);
-            ValidatePath(file.Path);
+            ValidatePath(file.Path, nameof(request));
             if (!paths.Add(file.Path))
             {
                 throw new ArgumentException(
@@ -47,13 +47,13 @@ internal static class SeedRequestValidator
         };
     }
 
-    private static void ValidatePath(string path)
+    private static void ValidatePath(string path, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             throw new ArgumentException(
                 "A seed file path is required.",
-                nameof(path));
+                parameterName);
         }
 
         if (path[0] == '/' ||
@@ -62,7 +62,7 @@ internal static class SeedRequestValidator
         {
             throw new ArgumentException(
                 $"The seed file path '{path}' must be relative and use forward slashes.",
-                nameof(path));
+                parameterName);
         }
 
         var segments = path.Split('/');
@@ -74,14 +74,14 @@ internal static class SeedRequestValidator
             {
                 throw new ArgumentException(
                     $"The seed file path '{path}' contains an invalid segment.",
-                    nameof(path));
+                    parameterName);
             }
 
             if (segment.Equals(".git", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException(
                     $"The seed file path '{path}' must not contain a .git segment.",
-                    nameof(path));
+                    parameterName);
             }
         }
     }

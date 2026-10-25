@@ -183,7 +183,8 @@ public sealed class TimeoutLayer : IVcsProviderLayer
             {
                 return await operation(timeoutSource.Token).WaitAsync(timeoutSource.Token);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException)
+                when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 var message = $"{operationName} did not complete within {options.Timeout}.";
                 throw new VcsProviderException(message, new TimeoutException(message), isTransient: true);

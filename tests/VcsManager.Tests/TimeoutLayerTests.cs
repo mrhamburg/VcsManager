@@ -113,4 +113,20 @@ public class TimeoutLayerTests
                 new RepositoryRef { Name = "core" },
                 cancellationSource.Token));
     }
+
+    [Fact]
+    public async Task InnerOperationCanceled_PropagatesUnchanged_WhenNoTokenIsCanceled()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new OperationCanceledException()));
+
+        var provider = new TimeoutLayer(new TimeoutLayerOptions
+        {
+            Timeout = TimeSpan.FromSeconds(30),
+        }).Wrap(inner);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
+    }
 }

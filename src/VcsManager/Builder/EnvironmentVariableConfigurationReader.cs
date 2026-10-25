@@ -50,8 +50,8 @@ public static class EnvironmentVariableConfigurationReader
                 continue;
             }
 
-            var value = entry.Value?.ToString();
-            if (string.IsNullOrWhiteSpace(value))
+            var value = entry.Value?.ToString()?.Trim();
+            if (string.IsNullOrEmpty(value))
             {
                 continue;
             }

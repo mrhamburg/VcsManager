@@ -131,4 +131,37 @@ public class ConcurrentLimiterLayerTests
             await first;
         }
     }
+
+    [Fact]
+    public async Task DisposeDuringInFlightOperation_ReturnsOriginalResult()
+    {
+        var release = new TaskCompletionSource();
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await release.Task;
+                return true;
+            });
+
+        var provider = new ConcurrentLimiterLayer().Wrap(inner);
+
+        var pending = provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" });
+        await provider.DisposeAsync();
+        release.SetResult();
+
+        Assert.True(await pending);
+    }
+
+    [Fact]
+    public async Task InnerOperationCanceled_PropagatesWhenAcquireTimeoutDidNotFire()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new OperationCanceledException()));
+        var provider = new ConcurrentLimiterLayer().Wrap(inner);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
+    }
 }

@@ -160,7 +160,8 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
 
         public override ValueTask DisposeAsync()
         {
-            _semaphore.Dispose();
+            // The semaphore is not disposed: operations that are still running
+            // must be able to release it. It holds no unmanaged resources.
             return base.DisposeAsync();
         }
 
@@ -208,7 +209,8 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
             {
                 await _semaphore.WaitAsync(timeoutSource.Token);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException)
+                when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 var message = $"Timed out after {acquireTimeout} waiting for a concurrency slot.";
                 throw new VcsProviderException(message, new TimeoutException(message), isTransient: true);

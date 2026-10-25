@@ -318,6 +318,30 @@ public class RetryLayerTests
         Assert.Equal(1, calls);
     }
 
+    [Fact]
+    public async Task NegativeRetryAfter_DoesNotThrowAndRetries()
+    {
+        var calls = 0;
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls++;
+                return calls == 1
+                    ? Task.FromException<bool>(
+                        new VcsRateLimitException("rate limit", TimeSpan.FromMilliseconds(-1)))
+                    : Task.FromResult(true);
+            });
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 2)).Wrap(inner);
+
+        var result = await provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" })
+            .WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(result);
+        Assert.Equal(2, calls);
+    }
+
     private static RetryLayerOptions FastOptions(int maxAttempts)
     {
         return new RetryLayerOptions

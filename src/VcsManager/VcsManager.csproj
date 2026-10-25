@@ -3,13 +3,7 @@
   <PropertyGroup>
     <PackageId>VcsManager.Core</PackageId>
     <Description>Core abstraction library for unified version control management across multiple providers</Description>
-    <Authors>mrhamburg</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>vcs;git;github;gitlab;azure-devops;dotnet</PackageTags>
-    <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,10 +16,6 @@
     <InternalsVisibleTo Include="VcsManager.Gitea" />
     <InternalsVisibleTo Include="VcsManager.AzureDevOps" />
     <InternalsVisibleTo Include="VcsManager.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

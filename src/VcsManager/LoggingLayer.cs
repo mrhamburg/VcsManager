@@ -42,6 +42,7 @@ public sealed class LoggingLayer : IVcsProviderLayer
             CreateRepositoryRequest request,
             CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(request);
             return ExecuteAsync(
                 Context(
                     "CreateRepository",
@@ -185,13 +186,10 @@ public sealed class LoggingLayer : IVcsProviderLayer
             var started = Stopwatch.GetTimestamp();
             _logger.LogStart(context with { Outcome = "start" });
 
+            T result;
             try
             {
-                var result = await operation(cancellationToken);
-                _logger.LogSuccess(
-                    context with { Outcome = "success" },
-                    Stopwatch.GetElapsedTime(started));
-                return result;
+                result = await operation(cancellationToken);
             }
             catch (Exception exception)
             {
@@ -201,6 +199,11 @@ public sealed class LoggingLayer : IVcsProviderLayer
                     exception.GetType().Name);
                 throw;
             }
+
+            _logger.LogSuccess(
+                context with { Outcome = "success" },
+                Stopwatch.GetElapsedTime(started));
+            return result;
         }
 
         private static string? FormatScope(string? owner, string? project)

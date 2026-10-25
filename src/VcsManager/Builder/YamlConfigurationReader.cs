@@ -1,3 +1,4 @@
+using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
 namespace VcsManager.Builder;
@@ -23,16 +24,22 @@ public static class YamlConfigurationReader
     /// <returns>The provider configuration.</returns>
     /// <exception cref="ArgumentException"><paramref name="yaml"/> is empty or whitespace.</exception>
     /// <exception cref="InvalidOperationException">
-    /// The document is empty, lacks a provider block, or contains more than one provider.
+    /// The document is not valid YAML, is empty, lacks a provider block, or contains
+    /// more than one provider.
     /// </exception>
     public static VcsProviderConfiguration Read(string yaml)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(yaml);
 
         var stream = new YamlStream();
-        using (var reader = new StringReader(yaml))
+        try
         {
+            using var reader = new StringReader(yaml);
             stream.Load(reader);
+        }
+        catch (YamlException exception)
+        {
+            throw new InvalidOperationException("YAML configuration is not valid.", exception);
         }
 
         if (stream.Documents.Count == 0 ||
@@ -86,7 +93,8 @@ public static class YamlConfigurationReader
             {
                 Flatten(nested, key, target);
             }
-            else if (entry.Value is YamlScalarNode { Value: { } value })
+            else if (entry.Value is YamlScalarNode { Value: { } value } &&
+                !string.IsNullOrWhiteSpace(value))
             {
                 target[key] = value;
             }

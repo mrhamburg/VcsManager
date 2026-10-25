@@ -21,6 +21,7 @@ internal static class RepositoryDisplayName
 
     public static string Format(RepositoryRef repository)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         return Format(repository.Owner, repository.Project, repository.Name);
     }
 }

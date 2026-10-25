@@ -125,11 +125,48 @@ public class LoggingLayerTests
         Assert.DoesNotContain("super-secret-token", string.Join("|", logger.FailureTypes));
     }
 
+    [Fact]
+    public async Task ThrowingSuccessLogger_DoesNotLogFailureForSucceededOperation()
+    {
+        var logger = new RecordingLogger { ThrowOnSuccess = true };
+        var inner = Substitute.For<IVcsProvider>();
+        inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var provider = new LoggingLayer(new LoggingLayerOptions
+        {
+            ProviderName = "github",
+            Logger = logger,
+        }).Wrap(inner);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }));
+
+        Assert.Empty(logger.FailureTypes);
+        Assert.DoesNotContain(logger.Events, e => e.StartsWith("failure:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task NullArguments_ThrowArgumentNullException()
+    {
+        var provider = new LoggingLayer(new LoggingLayerOptions
+        {
+            ProviderName = "github",
+            Logger = new RecordingLogger(),
+        }).Wrap(Substitute.For<IVcsProvider>());
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => provider.GetRepositoryAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => provider.CreateRepositoryAsync(null!));
+    }
+
     private sealed class RecordingLogger : IVcsProviderLogger
     {
         public List<string> Events { get; } = [];
 
         public List<string> FailureTypes { get; } = [];
+
+        public bool ThrowOnSuccess { get; init; }
 
         public void LogStart(VcsProviderLogContext context)
         {
@@ -139,6 +176,10 @@ public class LoggingLayerTests
         public void LogSuccess(VcsProviderLogContext context, TimeSpan duration)
         {
             Events.Add(Format(context));
+            if (ThrowOnSuccess)
+            {
+                throw new InvalidOperationException("logger failed");
+            }
         }
 
         public void LogFailure(

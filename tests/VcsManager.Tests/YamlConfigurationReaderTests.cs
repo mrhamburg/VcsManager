@@ -107,4 +107,30 @@ public class YamlConfigurationReaderTests
         Assert.Equal("github", configuration.ProviderName);
         Assert.Empty(configuration.Settings);
     }
+
+    [Fact]
+    public void Read_MalformedYaml_ThrowsInvalidOperationException()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => YamlConfigurationReader.Read("provider: [unclosed"));
+
+        Assert.Equal("YAML configuration is not valid.", exception.Message);
+    }
+
+    [Fact]
+    public void Read_BlankValues_AreSkipped()
+    {
+        var yaml = """
+            provider:
+              github:
+                token: "  "
+                base:
+                  url: https://github.example.com
+            """;
+
+        var configuration = YamlConfigurationReader.Read(yaml);
+
+        Assert.False(configuration.Settings.ContainsKey("token"));
+        Assert.Equal("https://github.example.com", configuration.Settings["base.url"]);
+    }
 }

@@ -77,6 +77,25 @@ public class EnvironmentVariableConfigurationReaderTests
         }
     }
 
+    [Fact]
+    public void Read_TrimsValues()
+    {
+        const string prefix = "VCSM_TEST_ENV_TRIM";
+        Set(prefix, "PROVIDER", "testprovider");
+        Set(prefix, "TESTPROVIDER_TOKEN", "abc\n");
+
+        try
+        {
+            var configuration = EnvironmentVariableConfigurationReader.Read(prefix);
+
+            Assert.Equal("abc", configuration.Settings["token"]);
+        }
+        finally
+        {
+            Clear(prefix, "PROVIDER", "TESTPROVIDER_TOKEN");
+        }
+    }
+
     private static void Set(string prefix, string name, string value)
     {
         Environment.SetEnvironmentVariable($"{prefix}_{name}", value);

@@ -4,7 +4,8 @@ namespace VcsManager;
 
 /// <summary>
 /// Retries transient provider failures with exponential backoff.
-/// Merge operations are never retried because they are not automatically idempotent.
+/// Create repository, seed repository, delete repository, create pull request, and
+/// merge pull request are never retried because a retry can repeat the operation.
 /// </summary>
 public sealed class RetryLayer : IVcsProviderLayer
 {
@@ -225,7 +226,7 @@ public sealed class RetryLayer : IVcsProviderLayer
         {
             if (exception is VcsRateLimitException { RetryAfter: { } retryAfter })
             {
-                return retryAfter;
+                return retryAfter < TimeSpan.Zero ? TimeSpan.Zero : retryAfter;
             }
 
             var milliseconds = options.BaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 2);
