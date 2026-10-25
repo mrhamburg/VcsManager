@@ -1,0 +1,40 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET specific
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Test results
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio
+.vs/
+*.Cache
+DocumentIndex*.json
+
+# JetBrains Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+Thumbs.db

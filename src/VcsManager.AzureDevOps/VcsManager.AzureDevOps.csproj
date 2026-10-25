@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>VcsManager.AzureDevOps</PackageId>
+    <Description>Azure DevOps provider for VcsManager</Description>
+    <Authors>mrhamburg</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>vcs;git;azure-devops;dotnet</PackageTags>
+    <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VcsManager\VcsManager.csproj" />
+  </ItemGroup>
+
+</Project>

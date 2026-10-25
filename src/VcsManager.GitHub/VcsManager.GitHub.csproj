@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>VcsManager.GitHub</PackageId>
+    <Description>GitHub provider for VcsManager</Description>
+    <Authors>mrhamburg</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>vcs;git;github;dotnet</PackageTags>
+    <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VcsManager\VcsManager.csproj" />
+  </ItemGroup>
+
+</Project>
