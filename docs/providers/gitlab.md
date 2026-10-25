@@ -211,7 +211,7 @@ still change whether GitLab removes the branch. `CommitTitle` and
 `CommitMessage` map to the merge commit message; for squash merges the same
 message also becomes the squash commit message.
 
-A failed merge returns `VcsConflictException` for HTTP 405, 409, and 422. A
+A failed merge returns `VcsConflictException` for HTTP 405, 406, 409, and 422. A
 missing merge request returns `PullRequestNotFoundException`.
 
 `ClosePullRequestAsync` never merges. It reads the merge request first and skips

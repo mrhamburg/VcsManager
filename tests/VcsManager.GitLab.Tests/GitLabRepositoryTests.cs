@@ -32,6 +32,26 @@ public sealed class GitLabRepositoryTests
     }
 
     [Fact]
+    public async Task CreateRepository_TrimsNameBeforeCallingClient()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.CreateProjectAsync(
+                Arg.Any<string?>(),
+                Arg.Any<CreateRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.Project());
+
+        await provider.CreateRepositoryAsync(
+            new CreateRepositoryRequest { Owner = "test-group", Name = "  test-project  " });
+
+        await client.Received(1).CreateProjectAsync(
+            "test-group",
+            Arg.Is<CreateRepositoryRequest>(value => value.Name == "test-project"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateRepository_WithSubgroup_PassesNestedNamespace()
     {
         var (provider, client) = CreateProvider();

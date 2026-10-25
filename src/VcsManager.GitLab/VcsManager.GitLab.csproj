@@ -3,12 +3,7 @@
   <PropertyGroup>
     <PackageId>VcsManager.GitLab</PackageId>
     <Description>GitLab provider for VcsManager</Description>
-    <Authors>mrhamburg</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>vcs;git;gitlab;dotnet</PackageTags>
-    <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

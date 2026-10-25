@@ -14,7 +14,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
     private readonly bool _disposeClient;
 
     public GitLabApiClient(GitLabOptions options)
-        : this(options, new HttpClientHandler(), disposeHandler: true)
+        : this(options, CreateHandler(), disposeHandler: true)
     {
     }
 
@@ -45,6 +45,13 @@ internal sealed class GitLabApiClient : IGitLabApiClient
     }
 
     internal Uri BaseAddress { get; }
+
+    // Redirects are not followed: .NET forwards custom headers such as PRIVATE-TOKEN
+    // to the redirect target, which could be another host.
+    internal static HttpClientHandler CreateHandler()
+    {
+        return new HttpClientHandler { AllowAutoRedirect = false };
+    }
 
     public async Task<GitLabProject> CreateProjectAsync(
         string? @namespace,

@@ -370,6 +370,35 @@ public sealed class GitLabApiClientTests
     }
 
     [Fact]
+    public void CreateHandler_DoesNotFollowRedirects()
+    {
+        using var handler = GitLabApiClient.CreateHandler();
+
+        Assert.False(handler.AllowAutoRedirect);
+    }
+
+    [Fact]
+    public async Task RedirectResponse_ThrowsGitLabApiExceptionAndSendsNoSecondRequest()
+    {
+        var handler = new RecordingHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.Found)
+            {
+                Content = new StringContent(string.Empty),
+            };
+            response.Headers.Location = new Uri("https://other.test/project");
+            return response;
+        });
+        await using var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<GitLabApiException>(
+            () => client.GetProjectAsync("group/project", CancellationToken.None));
+
+        Assert.Equal(HttpStatusCode.Found, exception.StatusCode);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task CreateMergeRequest_WithDraft_AppliesDraftTitle()
     {
         string? body = null;

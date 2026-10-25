@@ -42,7 +42,7 @@ internal static class GitLabExceptionMapper
         RepositoryRef repository,
         int iid)
     {
-        if (exception is GitLabApiException { StatusCode: HttpStatusCode.MethodNotAllowed } api)
+        if (exception is GitLabApiException { StatusCode: HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotAcceptable } api)
         {
             return new VcsConflictException(
                 $"{FormatMessage(operation, $"merge request !{iid} in repository '{FormatRepositoryName(repository)}'")}" +
@@ -89,6 +89,10 @@ internal static class GitLabExceptionMapper
                 $"{message}: {timeout.Message}",
                 timeout,
                 isTransient: true),
+            OperationCanceledException canceled => new VcsProviderException(
+                $"{message}: the request timed out.",
+                canceled,
+                isTransient: true),
             JsonException json => new VcsProviderException(
                 $"{message}: the response was not valid JSON.",
                 json),
@@ -121,6 +125,9 @@ internal static class GitLabExceptionMapper
                 $"{message}{detail}",
                 exception),
             HttpStatusCode.UnprocessableEntity => new VcsConflictException(
+                $"{message}{detail}",
+                exception),
+            HttpStatusCode.NotAcceptable => new VcsConflictException(
                 $"{message}{detail}",
                 exception),
             HttpStatusCode.TooManyRequests => new VcsRateLimitException(

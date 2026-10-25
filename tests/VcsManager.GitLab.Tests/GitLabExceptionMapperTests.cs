@@ -47,6 +47,7 @@ public sealed class GitLabExceptionMapperTests
     [InlineData(HttpStatusCode.MethodNotAllowed, typeof(VcsUnsupportedOperationException))]
     [InlineData(HttpStatusCode.Conflict, typeof(VcsConflictException))]
     [InlineData(HttpStatusCode.UnprocessableEntity, typeof(VcsConflictException))]
+    [InlineData(HttpStatusCode.NotAcceptable, typeof(VcsConflictException))]
     [InlineData(HttpStatusCode.TooManyRequests, typeof(VcsRateLimitException))]
     [InlineData(HttpStatusCode.InternalServerError, typeof(VcsProviderException))]
     [InlineData(HttpStatusCode.ServiceUnavailable, typeof(VcsProviderException))]
@@ -141,6 +142,31 @@ public sealed class GitLabExceptionMapperTests
 
         Assert.IsType<VcsProviderException>(mapped);
         Assert.Same(exception, mapped.InnerException);
+    }
+
+    [Fact]
+    public void MapOperation_Timeout_MapsToTransientProviderException()
+    {
+        var exception = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.");
+
+        var mapped = GitLabExceptionMapper.MapOperation(exception, "ListRepositories");
+
+        var providerException = Assert.IsType<VcsProviderException>(mapped);
+        Assert.True(providerException.IsTransient);
+        Assert.Contains("timed out", providerException.Message);
+        Assert.Same(exception, providerException.InnerException);
+    }
+
+    [Fact]
+    public void MapOperation_Redirect_MapsToProviderExceptionWithoutLocation()
+    {
+        var exception = ApiException(HttpStatusCode.Found, string.Empty);
+
+        var mapped = GitLabExceptionMapper.MapOperation(exception, "GetRepository");
+
+        var providerException = Assert.IsType<VcsProviderException>(mapped);
+        Assert.False(providerException.IsTransient);
+        Assert.Same(exception, providerException.InnerException);
     }
 
     [Fact]

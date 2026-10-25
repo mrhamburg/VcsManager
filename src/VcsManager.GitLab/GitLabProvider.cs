@@ -46,7 +46,7 @@ public sealed class GitLabProvider : IVcsProvider
         {
             var project = await _client.CreateProjectAsync(
                 namespacePath,
-                request,
+                request with { Name = request.Name.Trim() },
                 cancellationToken);
             return GitLabMapper.ToRepository(project);
         }
@@ -262,7 +262,12 @@ public sealed class GitLabProvider : IVcsProvider
         {
             var mergeRequest = await _client.CreateMergeRequestAsync(
                 path,
-                request,
+                request with
+                {
+                    Title = request.Title.Trim(),
+                    SourceBranch = request.SourceBranch.Trim(),
+                    TargetBranch = request.TargetBranch.Trim(),
+                },
                 cancellationToken);
             return GitLabMapper.ToPullRequest(mergeRequest);
         }

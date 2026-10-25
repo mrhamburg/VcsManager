@@ -36,6 +36,34 @@ public sealed class GitLabPullRequestTests
         Assert.True(pullRequest.IsDraft);
     }
 
+    [Fact]
+    public async Task CreatePullRequest_TrimsTitleAndBranchesBeforeCallingClient()
+    {
+        var (provider, client) = CreateProvider();
+        var request = new CreatePullRequestRequest
+        {
+            Title = "  Test merge request  ",
+            SourceBranch = " feature ",
+            TargetBranch = " main ",
+        };
+
+        client.CreateMergeRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<CreatePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest());
+
+        await provider.CreatePullRequestAsync(Repository(), request);
+
+        await client.Received(1).CreateMergeRequestAsync(
+            "test-group/test-project",
+            Arg.Is<CreatePullRequestRequest>(value =>
+                value.Title == "Test merge request" &&
+                value.SourceBranch == "feature" &&
+                value.TargetBranch == "main"),
+            Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(PullRequestState.Open)]
     [InlineData(PullRequestState.Draft)]
@@ -353,6 +381,7 @@ public sealed class GitLabPullRequestTests
 
     [Theory]
     [InlineData(HttpStatusCode.MethodNotAllowed)]
+    [InlineData(HttpStatusCode.NotAcceptable)]
     [InlineData(HttpStatusCode.Conflict)]
     [InlineData(HttpStatusCode.UnprocessableEntity)]
     public async Task MergePullRequest_ConflictStatus_ThrowsVcsConflictException(
