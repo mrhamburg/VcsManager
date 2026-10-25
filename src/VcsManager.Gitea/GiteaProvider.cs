@@ -96,12 +96,50 @@ public sealed class GiteaProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
+    public async Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
         RepositoryQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        query ??= new RepositoryQuery();
+        pagination ??= new PaginationOptions();
+
+        RejectProject(query.Project, nameof(query));
+        RejectInternalVisibility(query.Visibility);
+        var owner = ResolveOptionalOwner(query.Owner);
+
+        try
+        {
+            var page = await _client.ListRepositoriesAsync(
+                owner,
+                query,
+                pagination,
+                cancellationToken);
+
+            return new PagedResult<VcsRepository>
+            {
+                Items = page.Items
+                    .Where(repository => MatchesRepositoryQuery(repository, query))
+                    .Select(GiteaMapper.ToRepository)
+                    .ToArray(),
+                Page = pagination.Page,
+                PageSize = GiteaPagination.EffectivePageSize(pagination.PageSize),
+                TotalCount = page.TotalCount,
+                HasNextPage = page.HasNextPage,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapOperation(exception, "ListRepositories");
+        }
     }
 
     /// <inheritdoc/>
@@ -280,6 +318,35 @@ public sealed class GiteaProvider : IVcsProvider
                 "Gitea does not support project-scoped repositories. Remove Project from the request.",
                 parameterName);
         }
+    }
+
+    private static void RejectInternalVisibility(VcsVisibility? visibility)
+    {
+        if (visibility == VcsVisibility.Internal)
+        {
+            throw new ArgumentException(
+                "Gitea repositories support only Public and Private visibility.",
+                nameof(visibility));
+        }
+    }
+
+    private static bool MatchesRepositoryQuery(
+        GiteaRepository repository,
+        RepositoryQuery query)
+    {
+        if (!query.IncludeArchived && repository.IsArchived)
+        {
+            return false;
+        }
+
+        if (query.Visibility is { } visibility && repository.Visibility != visibility)
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(query.NameContains) ||
+            repository.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase) ||
+            repository.FullName.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
