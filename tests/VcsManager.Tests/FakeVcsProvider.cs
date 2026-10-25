@@ -5,7 +5,15 @@ internal sealed class FakeVcsProvider : IVcsProvider
     private const string KeySeparator = "\u001F";
     private readonly Dictionary<string, VcsRepository> _repositories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PullRequest> _pullRequests = new(StringComparer.Ordinal);
+    private readonly bool _mergeConflict;
+    private readonly MergeMethod? _unsupportedMergeMethod;
     private int _nextPullRequestNumber = 1;
+
+    public FakeVcsProvider(bool mergeConflict = false, MergeMethod? unsupportedMergeMethod = null)
+    {
+        _mergeConflict = mergeConflict;
+        _unsupportedMergeMethod = unsupportedMergeMethod;
+    }
 
     public bool IsDisposed { get; private set; }
 
@@ -225,7 +233,17 @@ internal sealed class FakeVcsProvider : IVcsProvider
         ArgumentNullException.ThrowIfNull(repository);
         EnsureRepositoryExists(repository);
 
-        _ = request ?? new MergePullRequestRequest();
+        var method = request?.Method ?? MergeMethod.Merge;
+        if (_unsupportedMergeMethod == method)
+        {
+            throw new VcsUnsupportedOperationException("fake", "MergePullRequest");
+        }
+
+        if (_mergeConflict)
+        {
+            throw new VcsConflictException("The pull request has merge conflicts.");
+        }
+
         var existing = GetPullRequestOrThrow(repository, number);
         if (existing.State == PullRequestState.Merged)
         {
