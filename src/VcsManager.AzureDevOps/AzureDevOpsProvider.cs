@@ -32,20 +32,70 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> CreateRepositoryAsync(
+    public async Task<VcsRepository> CreateRepositoryAsync(
         CreateRepositoryRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        throw new NotImplementedException();
+        ValidateCreateRepositoryRequest(request);
+
+        var owner = ResolveOwner(request.Owner);
+        var project = ResolveProject(request.Project);
+        var name = request.Name.Trim();
+
+        try
+        {
+            var created = await _client.CreateRepositoryAsync(project, request, cancellationToken);
+            return AzureDevOpsMapper.ToRepository(created);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "CreateRepository",
+                owner,
+                project,
+                name);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> GetRepositoryAsync(
+    public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+
+        try
+        {
+            return AzureDevOpsMapper.ToRepository(
+                await _client.GetRepositoryAsync(project, name, cancellationToken));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "GetRepository",
+                owner,
+                project,
+                name);
+        }
     }
 
     /// <inheritdoc/>
@@ -58,19 +108,75 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task DeleteRepositoryAsync(
+    public async Task DeleteRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.DeleteRepositoryAsync(project, name, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "DeleteRepository",
+                owner,
+                project,
+                name);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<bool> RepositoryExistsAsync(
+    public async Task<bool> RepositoryExistsAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.GetRepositoryAsync(project, name, cancellationToken);
+            return true;
+        }
+        catch (RepositoryNotFoundException)
+        {
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var mapped = AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "RepositoryExists",
+                owner,
+                project,
+                name);
+
+            if (mapped is RepositoryNotFoundException)
+            {
+                return false;
+            }
+
+            throw mapped;
+        }
     }
 
     /// <inheritdoc/>
