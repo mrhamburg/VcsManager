@@ -107,7 +107,7 @@ public sealed class GitHubProvider : IVcsProvider
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        query ??= new RepositoryQuery();
+        query = NormalizeRepositoryQuery(query ?? new RepositoryQuery());
         pagination ??= new PaginationOptions();
         ValidateRepositoryQuery(query);
 
@@ -289,7 +289,7 @@ public sealed class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        query ??= new PullRequestQuery();
+        query = NormalizePullRequestQuery(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
         try
@@ -576,9 +576,34 @@ public sealed class GitHubProvider : IVcsProvider
         return true;
     }
 
+    private static RepositoryQuery NormalizeRepositoryQuery(RepositoryQuery query)
+    {
+        return query with
+        {
+            Owner = NormalizeOptional(query.Owner),
+            Project = NormalizeOptional(query.Project),
+            NameContains = NormalizeOptional(query.NameContains),
+        };
+    }
+
+    private static PullRequestQuery NormalizePullRequestQuery(PullRequestQuery query)
+    {
+        return query with
+        {
+            Author = NormalizeOptional(query.Author),
+            SourceBranch = NormalizeOptional(query.SourceBranch),
+            TargetBranch = NormalizeOptional(query.TargetBranch),
+        };
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
     private static string? NormalizeOwner(string? owner)
     {
-        return string.IsNullOrWhiteSpace(owner) ? null : owner.Trim();
+        return NormalizeOptional(owner);
     }
 
     private static string RequireValue(string? value, string message, string parameterName)

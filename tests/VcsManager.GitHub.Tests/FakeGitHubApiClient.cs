@@ -148,8 +148,6 @@ internal sealed class FakeGitHubApiClient : IGitHubApiClient
             HtmlUrl = $"{repository.HtmlUrl}/pull/{number}",
             CreatedAt = DateTimeOffset.UnixEpoch,
             UpdatedAt = DateTimeOffset.UnixEpoch,
-            HeadRepositoryFullName = repository.FullName,
-            BaseRepositoryFullName = repository.FullName,
             SourceBranchIsFromFork = SourceBranchIsFromFork,
         };
 

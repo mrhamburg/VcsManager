@@ -468,6 +468,34 @@ public sealed class GitLabRepositoryTests
         };
     }
 
+    [Fact]
+    public async Task ListRepositories_PaddedNameContains_IsNormalized()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListProjectsAsync(
+                null,
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.ProjectPage(
+            [
+                TestData.Project(name: "alpha"),
+                TestData.Project(name: "beta"),
+            ]));
+
+        var result = await provider.ListRepositoriesAsync(
+            new RepositoryQuery { NameContains = " alpha " });
+
+        var project = Assert.Single(result.Items);
+        Assert.Equal("alpha", project.Name);
+        await client.Received(1).ListProjectsAsync(
+            null,
+            Arg.Is<RepositoryQuery>(query => query.NameContains == "alpha"),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private static (GitLabProvider Provider, IGitLabApiClient Client) CreateProvider(
         GitLabOptions? options = null)
     {

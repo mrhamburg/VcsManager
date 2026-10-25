@@ -116,6 +116,26 @@ public sealed class AzureDevOpsApiClientTests
         Assert.Contains("Unauthorized", exception.ResponseBody, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ListRepositories_WhenRateLimited_ExposesRetryAfter()
+    {
+        var retryAfter = TimeSpan.FromSeconds(30);
+        var handler = new StubHttpMessageHandler(
+            "{\"message\":\"Too many requests\"}",
+            HttpStatusCode.TooManyRequests,
+            retryAfter);
+        await using var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<AzureDevOpsApiException>(
+            () => client.ListRepositoriesAsync(
+                project: null,
+                new RepositoryQuery(),
+                new PaginationOptions(),
+                CancellationToken.None));
+
+        Assert.Equal(retryAfter, exception.RetryAfter);
+    }
+
     private static AzureDevOpsApiClient CreateClient(HttpMessageHandler handler)
     {
         var options = new AzureDevOpsOptions
@@ -138,7 +158,8 @@ public sealed class AzureDevOpsApiClientTests
 
     private sealed class StubHttpMessageHandler(
         string responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK) : HttpMessageHandler
+        HttpStatusCode statusCode = HttpStatusCode.OK,
+        TimeSpan? retryAfter = null) : HttpMessageHandler
     {
         public Uri? RequestUri { get; private set; }
 
@@ -147,11 +168,17 @@ public sealed class AzureDevOpsApiClientTests
             CancellationToken cancellationToken)
         {
             RequestUri = request.RequestUri;
-
-            return Task.FromResult(new HttpResponseMessage(statusCode)
+            var response = new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
-            });
+            };
+
+            if (retryAfter is { } delay)
+            {
+                response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(delay);
+            }
+
+            return Task.FromResult(response);
         }
     }
 }

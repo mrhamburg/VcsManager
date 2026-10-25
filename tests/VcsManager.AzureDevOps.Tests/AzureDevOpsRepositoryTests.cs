@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.WebApi.Exceptions;
 using NSubstitute;
@@ -305,6 +306,63 @@ public sealed class AzureDevOpsRepositoryTests
         await Assert.ThrowsAsync<VcsAuthorizationException>(
             () => provider.GetRepositoryAsync(
                 new RepositoryRef { Name = "test-repository" }));
+    }
+
+    [Fact]
+    public async Task RepositoryOperation_WhenUnauthorized_ThrowsAuthenticationException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetRepositoryAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<AzureDevOpsRepository>>(_ => throw new VssUnauthorizedException(
+                "Unauthorized"));
+
+        await Assert.ThrowsAsync<VcsAuthenticationException>(
+            () => provider.GetRepositoryAsync(
+                new RepositoryRef { Name = "test-repository" }));
+    }
+
+    [Fact]
+    public async Task RepositoryOperation_WhenResourceNotFound_ThrowsRepositoryNotFoundException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetRepositoryAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<AzureDevOpsRepository>>(_ => throw new VssResourceNotFoundException(
+                "Not found"));
+
+        await Assert.ThrowsAsync<RepositoryNotFoundException>(
+            () => provider.GetRepositoryAsync(
+                new RepositoryRef { Name = "test-repository" }));
+    }
+
+    [Fact]
+    public async Task RepositoryOperation_WhenRestRateLimited_ExposesRetryAfter()
+    {
+        var (provider, client) = CreateProvider();
+        var retryAfter = TimeSpan.FromSeconds(42);
+
+        client.ListRepositoriesAsync(
+                Arg.Any<string?>(),
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<AzureDevOpsPage<AzureDevOpsRepository>>>(_ =>
+                throw new AzureDevOpsApiException(
+                    HttpStatusCode.TooManyRequests,
+                    "{}",
+                    retryAfter));
+
+        var exception = await Assert.ThrowsAsync<VcsRateLimitException>(
+            () => provider.ListRepositoriesAsync());
+
+        Assert.Equal(retryAfter, exception.RetryAfter);
     }
 
     [Fact]

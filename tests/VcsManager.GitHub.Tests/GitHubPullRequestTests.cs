@@ -425,6 +425,37 @@ public sealed class GitHubPullRequestTests
     }
 
     [Fact]
+    public async Task ListPullRequests_PaddedAuthor_IsNormalized()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListPullRequestsAsync(
+                "test-owner",
+                "test-repo",
+                Arg.Any<PullRequestQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.PullRequestPage(
+            [
+                TestData.PullRequest(),
+                TestData.PullRequest(number: 8) with { Id = 108, Author = "other-user" },
+            ]));
+
+        var result = await provider.ListPullRequestsAsync(
+            Repository(),
+            new PullRequestQuery { Author = " test-user " });
+
+        var pullRequest = Assert.Single(result.Items);
+        Assert.Equal("test-user", pullRequest.Author);
+        await client.Received(1).ListPullRequestsAsync(
+            "test-owner",
+            "test-repo",
+            Arg.Is<PullRequestQuery>(query => query.Author == "test-user"),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ListPullRequests_MissingRepository_ThrowsRepositoryNotFoundException()
     {
         var (provider, client) = CreateProvider();

@@ -78,8 +78,6 @@ internal sealed class GitLabNamespaceResponse
     public long Id { get; set; }
 
     public string Path { get; set; } = string.Empty;
-
-    public string FullPath { get; set; } = string.Empty;
 }
 
 internal sealed class GitLabMergeRequestResponse

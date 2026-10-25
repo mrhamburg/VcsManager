@@ -307,12 +307,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
                 $"orgs/{Encode(owner)}",
                 cancellationToken);
 
-            return new GiteaOwner(
-                organization.Id,
-                string.IsNullOrWhiteSpace(organization.Username)
-                    ? organization.Name ?? owner
-                    : organization.Username,
-                IsOrganization: true);
+            return new GiteaOwner(organization.Id, IsOrganization: true);
         }
         catch (GiteaApiException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {
@@ -323,7 +318,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
             $"users/{Encode(owner)}",
             cancellationToken);
 
-        return new GiteaOwner(user.Id, user.Login, IsOrganization: false);
+        return new GiteaOwner(user.Id, IsOrganization: false);
     }
 
     private async Task<T> SendAsync<T>(

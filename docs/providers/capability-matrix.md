@@ -62,8 +62,8 @@ usually returns not found. Callers handle the not-found error explicitly.
 
 | Provider | Status | Notes |
 | --- | --- | --- |
-| GitHub | Supported | Lists repositories for `Owner` (user or organization) or all repositories visible to the token when `Owner` is absent. Archived repositories are included only when requested. |
-| GitLab | Supported | Lists projects in `Owner` (group or user), optionally in the subgroup `Project`, or all projects visible to the token. `IncludeArchived` maps to the project `archived` filter. |
+| GitHub | Supported | Lists repositories for `Owner` (organization) or all repositories visible to the token when `Owner` is absent. Archived repositories are included only when requested. |
+| GitLab | Supported | Lists projects in `Owner` (group), optionally in the subgroup `Project`, or all projects visible to the token. `IncludeArchived` maps to the project `archived` filter. |
 | Azure DevOps | Conditional | Lists one team project from `Project` or `DefaultProject`; without either, it uses the organization-level REST listing for the configured organization. `NameContains` and `Visibility` apply to the returned page. Azure DevOps has no repository archive concept, so `IncludeArchived` has no effect and repositories report `Private`. `TotalCount` is `null`. |
 | Gitea | Supported | Organization owners use `/orgs/{owner}/repos`; user owners resolve the user ID and use `/repos/search?uid={id}`; no owner uses `/repos/search`. Archived repositories are excluded unless requested. `NameContains` maps to `q` where supported. `Internal` visibility is rejected. The page size is capped at 50. |
 

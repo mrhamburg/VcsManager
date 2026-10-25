@@ -389,6 +389,34 @@ public sealed class GitHubRepositoryTests
         Assert.Equal(2, result.Items.Count);
     }
 
+    [Fact]
+    public async Task ListRepositories_PaddedNameContains_IsNormalized()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListRepositoriesAsync(
+                null,
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.RepositoryPage(
+            [
+                TestData.Repository(name: "alpha"),
+                TestData.Repository(name: "beta"),
+            ]));
+
+        var result = await provider.ListRepositoriesAsync(
+            new RepositoryQuery { NameContains = " alpha " });
+
+        var repository = Assert.Single(result.Items);
+        Assert.Equal("alpha", repository.Name);
+        await client.Received(1).ListRepositoriesAsync(
+            null,
+            Arg.Is<RepositoryQuery>(query => query.NameContains == "alpha"),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private static (GitHubProvider Provider, IGitHubApiClient Client) CreateProvider(
         GitHubOptions? options = null)
     {

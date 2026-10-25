@@ -30,9 +30,5 @@ internal sealed record GitHubPullRequest
 
     public DateTimeOffset? ClosedAt { get; init; }
 
-    public string? HeadRepositoryFullName { get; init; }
-
-    public string? BaseRepositoryFullName { get; init; }
-
     public bool SourceBranchIsFromFork { get; init; }
 }

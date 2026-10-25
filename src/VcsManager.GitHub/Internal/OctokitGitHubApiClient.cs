@@ -311,8 +311,6 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             UpdatedAt = pullRequest.UpdatedAt,
             MergedAt = pullRequest.MergedAt,
             ClosedAt = pullRequest.ClosedAt,
-            HeadRepositoryFullName = pullRequest.Head.Repository?.FullName,
-            BaseRepositoryFullName = pullRequest.Base.Repository?.FullName,
             SourceBranchIsFromFork = IsFromFork(pullRequest),
         };
     }
@@ -332,22 +330,21 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         return pullRequest.Draft ? PullRequestState.Draft : PullRequestState.Open;
     }
 
-    private static bool IsFromFork(OctoPullRequest pullRequest)
+    internal static bool IsFromFork(OctoPullRequest pullRequest)
     {
-        if (pullRequest.Head.Repository is null)
+        if (pullRequest.Head?.Repository is not { } headRepository)
         {
             return true;
         }
 
-        if (pullRequest.Head.Repository.Fork)
+        if (pullRequest.Base?.Repository is { } baseRepository)
         {
-            return true;
-        }
-
-        return pullRequest.Base.Repository is not null &&
-            !string.Equals(
-                pullRequest.Head.Repository.FullName,
-                pullRequest.Base.Repository.FullName,
+            return !string.Equals(
+                headRepository.FullName,
+                baseRepository.FullName,
                 StringComparison.OrdinalIgnoreCase);
+        }
+
+        return headRepository.Fork;
     }
 }

@@ -100,6 +100,74 @@ public class RetryLayerTests
     }
 
     [Fact]
+    public async Task DoesNotRetryRepositoryCreation()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.CreateRepositoryAsync(
+                Arg.Any<CreateRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<VcsRepository>(
+                Transient(HttpStatusCode.ServiceUnavailable)));
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 3)).Wrap(inner);
+
+        await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.CreateRepositoryAsync(new CreateRepositoryRequest { Name = "core" }));
+
+        await inner.Received(1).CreateRepositoryAsync(
+            Arg.Any<CreateRepositoryRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DoesNotRetryRepositoryDeletion()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.DeleteRepositoryAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(Transient(HttpStatusCode.ServiceUnavailable)));
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 3)).Wrap(inner);
+
+        await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.DeleteRepositoryAsync(new RepositoryRef { Name = "core" }));
+
+        await inner.Received(1).DeleteRepositoryAsync(
+            Arg.Any<RepositoryRef>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DoesNotRetryPullRequestCreation()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.CreatePullRequestAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<CreatePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<PullRequest>(
+                Transient(HttpStatusCode.ServiceUnavailable)));
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 3)).Wrap(inner);
+
+        await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.CreatePullRequestAsync(
+                new RepositoryRef { Name = "core" },
+                new CreatePullRequestRequest
+                {
+                    Title = "title",
+                    SourceBranch = "feature",
+                    TargetBranch = "main",
+                }));
+
+        await inner.Received(1).CreatePullRequestAsync(
+            Arg.Any<RepositoryRef>(),
+            Arg.Any<CreatePullRequestRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HonorsRetryAfterDelay()
     {
         var calls = 0;

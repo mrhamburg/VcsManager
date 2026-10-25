@@ -98,6 +98,10 @@ internal static class AzureDevOpsExceptionMapper
                 $"{message} {throttled.Message}".TrimEnd(),
                 GetRetryAfter(throttled),
                 throttled),
+            VssUnauthorizedException vssUnauthorized => new VcsAuthenticationException(
+                $"{message} {vssUnauthorized.Message}".TrimEnd(),
+                vssUnauthorized),
+            VssResourceNotFoundException resourceNotFound => notFound(resourceNotFound),
             VssAuthenticationException authentication => new VcsAuthenticationException(
                 $"{message} {authentication.Message}".TrimEnd(),
                 authentication),
@@ -139,7 +143,7 @@ internal static class AzureDevOpsExceptionMapper
                 exception),
             HttpStatusCode.TooManyRequests => new VcsRateLimitException(
                 $"{message}{detail}",
-                retryAfter: null,
+                retryAfter: (exception as AzureDevOpsApiException)?.RetryAfter,
                 exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
                 $"{message}{detail}",

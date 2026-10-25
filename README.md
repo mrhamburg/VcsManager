@@ -26,6 +26,7 @@ tests/
   VcsManager.GitHub.Tests/
   VcsManager.GitLab.Tests/
   VcsManager.AzureDevOps.Tests/
+  VcsManager.Gitea.Tests/
   VcsManager.IntegrationTests/
 samples/
 ```

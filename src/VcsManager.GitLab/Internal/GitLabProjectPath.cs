@@ -10,14 +10,6 @@ internal static class GitLabProjectPath
         return Combine(owner, repository.Project, repository.Name);
     }
 
-    public static string From(CreateRepositoryRequest request, string? defaultNamespace)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        var owner = ResolveOwner(request.Owner, defaultNamespace);
-        return Combine(owner, request.Project, request.Name);
-    }
-
     public static string Combine(string? owner, string? project, string name)
     {
         var segments = new List<string>(3);

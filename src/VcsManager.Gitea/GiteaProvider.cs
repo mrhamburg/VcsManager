@@ -101,7 +101,7 @@ public sealed class GiteaProvider : IVcsProvider
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        query ??= new RepositoryQuery();
+        query = NormalizeRepositoryQuery(query ?? new RepositoryQuery());
         pagination ??= new PaginationOptions();
 
         RejectProject(query.Project, nameof(query));
@@ -294,7 +294,7 @@ public sealed class GiteaProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        query ??= new PullRequestQuery();
+        query = NormalizePullRequestQuery(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
         try
@@ -543,6 +543,31 @@ public sealed class GiteaProvider : IVcsProvider
                 "Gitea repositories support only Public and Private visibility.",
                 nameof(visibility));
         }
+    }
+
+    private static RepositoryQuery NormalizeRepositoryQuery(RepositoryQuery query)
+    {
+        return query with
+        {
+            Owner = NormalizeOptional(query.Owner),
+            Project = NormalizeOptional(query.Project),
+            NameContains = NormalizeOptional(query.NameContains),
+        };
+    }
+
+    private static PullRequestQuery NormalizePullRequestQuery(PullRequestQuery query)
+    {
+        return query with
+        {
+            Author = NormalizeOptional(query.Author),
+            SourceBranch = NormalizeOptional(query.SourceBranch),
+            TargetBranch = NormalizeOptional(query.TargetBranch),
+        };
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static bool MatchesRepositoryQuery(

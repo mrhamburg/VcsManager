@@ -54,7 +54,7 @@ public sealed class RetryLayer : IVcsProviderLayer
             CreateRepositoryRequest request,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(token => Inner.CreateRepositoryAsync(request, token), cancellationToken);
+            return Inner.CreateRepositoryAsync(request, cancellationToken);
         }
 
         public override Task<VcsRepository> GetRepositoryAsync(
@@ -78,7 +78,7 @@ public sealed class RetryLayer : IVcsProviderLayer
             RepositoryRef repository,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(token => Inner.DeleteRepositoryAsync(repository, token), cancellationToken);
+            return Inner.DeleteRepositoryAsync(repository, cancellationToken);
         }
 
         public override Task<bool> RepositoryExistsAsync(
@@ -93,9 +93,7 @@ public sealed class RetryLayer : IVcsProviderLayer
             CreatePullRequestRequest request,
             CancellationToken cancellationToken = default)
         {
-            return ExecuteAsync(
-                token => Inner.CreatePullRequestAsync(repository, request, token),
-                cancellationToken);
+            return Inner.CreatePullRequestAsync(repository, request, cancellationToken);
         }
 
         public override Task<PullRequest> GetPullRequestAsync(

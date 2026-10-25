@@ -102,7 +102,7 @@ public sealed class GitLabProvider : IVcsProvider
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        query ??= new RepositoryQuery();
+        query = NormalizeRepositoryQuery(query ?? new RepositoryQuery());
         pagination ??= new PaginationOptions();
 
         var owner = ResolveOptionalOwner(query.Owner);
@@ -295,7 +295,7 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
-        query ??= new PullRequestQuery();
+        query = NormalizePullRequestQuery(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
         try
@@ -524,6 +524,26 @@ public sealed class GitLabProvider : IVcsProvider
                 number,
                 "The pull request number must be at least 1.");
         }
+    }
+
+    private static RepositoryQuery NormalizeRepositoryQuery(RepositoryQuery query)
+    {
+        return query with
+        {
+            Owner = NormalizeOptional(query.Owner),
+            Project = NormalizeOptional(query.Project),
+            NameContains = NormalizeOptional(query.NameContains),
+        };
+    }
+
+    private static PullRequestQuery NormalizePullRequestQuery(PullRequestQuery query)
+    {
+        return query with
+        {
+            Author = NormalizeOptional(query.Author),
+            SourceBranch = NormalizeOptional(query.SourceBranch),
+            TargetBranch = NormalizeOptional(query.TargetBranch),
+        };
     }
 
     private static bool MatchesPullRequestQuery(GitLabMergeRequest mergeRequest, PullRequestQuery query)

@@ -304,7 +304,10 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new AzureDevOpsApiException(response.StatusCode, body);
+            throw new AzureDevOpsApiException(
+                response.StatusCode,
+                body,
+                GetRetryAfter(response));
         }
 
         var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
@@ -389,6 +392,23 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         }
 
         return $"{title.Trim()}\n\n{message.Trim()}";
+    }
+
+    private static TimeSpan? GetRetryAfter(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta)
+        {
+            return delta > TimeSpan.Zero ? delta : TimeSpan.Zero;
+        }
+
+        if (retryAfter?.Date is { } date)
+        {
+            var delay = date - DateTimeOffset.UtcNow;
+            return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
+        }
+
+        return null;
     }
 
     private static string AddQuery(string path, IReadOnlyDictionary<string, string> parameters)

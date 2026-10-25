@@ -179,6 +179,34 @@ public sealed class GiteaRepositoryListingTests
             () => provider.ListRepositoriesAsync());
     }
 
+    [Fact]
+    public async Task ListRepositories_PaddedNameContains_IsNormalized()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.ListRepositoriesAsync(
+                Arg.Any<string?>(),
+                Arg.Any<RepositoryQuery>(),
+                Arg.Any<PaginationOptions>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.RepositoryPage(
+            [
+                TestData.Repository(name: "alpha"),
+                TestData.Repository(name: "beta"),
+            ]));
+
+        var result = await provider.ListRepositoriesAsync(
+            new RepositoryQuery { NameContains = " alpha " });
+
+        var repository = Assert.Single(result.Items);
+        Assert.Equal("alpha", repository.Name);
+        await client.Received(1).ListRepositoriesAsync(
+            Arg.Any<string?>(),
+            Arg.Is<RepositoryQuery>(query => query.NameContains == "alpha"),
+            Arg.Any<PaginationOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private static (GiteaProvider Provider, IGiteaApiClient Client) CreateProvider(
         string? defaultOwner = TestData.Owner)
     {

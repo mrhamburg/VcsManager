@@ -47,10 +47,6 @@ internal static class TestData
             UpdatedAt = DateTimeOffset.UnixEpoch,
             MergedAt = state == PullRequestState.Merged ? DateTimeOffset.UnixEpoch : null,
             ClosedAt = state == PullRequestState.Closed ? DateTimeOffset.UnixEpoch : null,
-            HeadRepositoryFullName = sourceBranchIsFromFork
-                ? "fork-owner/test-repo"
-                : "test-owner/test-repo",
-            BaseRepositoryFullName = "test-owner/test-repo",
             SourceBranchIsFromFork = sourceBranchIsFromFork,
         };
     }

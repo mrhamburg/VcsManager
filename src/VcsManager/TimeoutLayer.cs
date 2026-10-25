@@ -170,7 +170,7 @@ public sealed class TimeoutLayer : IVcsProviderLayer
 
             try
             {
-                return await operation(timeoutSource.Token);
+                return await operation(timeoutSource.Token).WaitAsync(timeoutSource.Token);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {

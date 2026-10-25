@@ -79,10 +79,6 @@ internal sealed class GiteaUserResponse
 internal sealed class GiteaOrganizationResponse
 {
     public long Id { get; set; }
-
-    public string Username { get; set; } = string.Empty;
-
-    public string? Name { get; set; }
 }
 
 internal sealed class GiteaPullRequestResponse
