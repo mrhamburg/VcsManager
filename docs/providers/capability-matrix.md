@@ -1,0 +1,121 @@
+# Provider capability matrix
+
+This matrix describes VcsManager v1 behavior. It is a companion to the
+[architecture decision records](../adr/README.md), especially
+[ADR-0007](../adr/0007-merge-method-mapping.md) and
+[ADR-0009](../adr/0009-pagination-and-errors.md).
+
+## Legend
+
+| Value | Meaning |
+| --- | --- |
+| **Supported** | Available for resources the token can access, with no provider-specific configuration beyond permissions. |
+| **Conditional** | Available, but provider settings, permissions, policies, or resource state can prevent it. The notes state the condition. |
+| **Unsupported** | No v1 mapping. |
+
+## Capability summary
+
+| Capability | GitHub | GitLab | Azure DevOps |
+| --- | --- | --- | --- |
+| Create repository | Supported | Supported | Conditional |
+| Delete repository | Supported | Supported | Supported |
+| List repositories | Supported | Supported | Supported |
+| Create pull request | Supported | Supported | Supported |
+| Merge pull request | Conditional | Conditional | Conditional |
+| Close pull request | Supported | Supported | Supported |
+
+## Repository addressing
+
+| Provider | `Owner` | `Project` | `Name` | Native address |
+| --- | --- | --- | --- | --- |
+| GitHub | User or organization | Unsupported | Repository | `{owner}/{name}` |
+| GitLab | Top-level namespace | Optional subgroup path | Project | `{owner}/{project}/{name}` or `{owner}/{name}` |
+| Azure DevOps | Organization | Team project (required) | Repository | `{owner}/{project}/_git/{name}` |
+
+See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
+
+## Capability details
+
+### Create repository
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | `Owner` is required. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. |
+| GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. |
+| Azure DevOps | Conditional | `Owner` (organization) and `Project` (team project) are required, and the project must already exist. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error. The token needs project administration rights. |
+
+### Delete repository
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | Requires repository administration and the `delete_repo` scope. |
+| GitLab | Supported | Requires the Owner or Maintainer role according to project settings. |
+| Azure DevOps | Supported | Requires project administration. Deletion may be disabled by organization policy. |
+
+Deleting a repository is not idempotent across providers: a second delete
+usually returns not found. Callers handle the not-found error explicitly.
+
+### List repositories
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | Lists repositories for `Owner` (user or organization) or all repositories visible to the token when `Owner` is absent. Archived repositories are included only when requested. |
+| GitLab | Supported | Lists projects in `Owner` (group or user), optionally in the subgroup `Project`, or all projects visible to the token. `IncludeArchived` maps to the project `archived` filter. |
+| Azure DevOps | Conditional | `Owner` is the organization. `Project` narrows the result to one team project; without it, the organization-level repository listing is used. Azure DevOps has no repository archive concept, so `IncludeArchived` has no effect. |
+
+All listings are bounded by token permissions. See
+[ADR-0006](../adr/0006-repository-list-scope.md).
+
+### Create pull request
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | Source and target branches must exist. Draft pull requests are supported. Cross-repository pull requests require a fork and are not a v1 guarantee. |
+| GitLab | Supported | Source and target branches must exist in the project. Draft is supported. Project merge request settings can still block later merge. |
+| Azure DevOps | Supported | The target repository and project must exist. Draft pull requests are supported. Branch policies do not block creation, only completion. |
+
+### Merge pull request
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Conditional | The repository must allow the requested `merge`, `squash`, or `rebase` method. Branch protection, required checks, and merge queue rules can reject the merge. |
+| GitLab | Conditional | The project `merge_method` and squash settings control the outcome. `Rebase` is meaningful only under `rebase_merge` or `ff`; under `merge`, GitLab still creates a merge commit. Conflicts and failed pipelines can block the merge. |
+| Azure DevOps | Conditional | Completion uses `noFastForward`, `squash`, or `rebase`. Branch policies, required reviewers, and build validation can block completion. Reviewer votes are separate from completion and never merge a pull request. |
+
+### Close pull request
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | Idempotent. Closing an open pull request sets `state = closed`. A closed or merged pull request is returned unchanged. |
+| GitLab | Supported | Idempotent. Closing uses `state_event = close`. A closed or merged merge request is returned unchanged. |
+| Azure DevOps | Supported | Idempotent. Closing sets `status = abandoned`. An abandoned or completed pull request is returned unchanged. |
+
+See [ADR-0008](../adr/0008-close-semantics.md).
+
+## Merge method support
+
+| `MergeMethod` | GitHub | GitLab | Azure DevOps |
+| --- | --- | --- | --- |
+| `Merge` | Supported: `merge` | Conditional: merge commit when project `merge_method = merge` | Supported: `noFastForward` |
+| `Squash` | Supported: `squash` | Conditional: `squash = true`, subject to the project squash setting | Supported: `squash` |
+| `Rebase` | Supported: `rebase` | Conditional: requires project `merge_method = rebase_merge` or `ff` and a conflict-free rebase | Supported: `rebase` |
+
+## Not supported in v1
+
+| Provider | Not supported |
+| --- | --- |
+| GitHub | Project-scoped repository addressing; OAuth and GitHub App authentication; provider-reported total counts for pagination |
+| GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf |
+| Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method |
+
+## Provider documentation
+
+- GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
+- GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
+- GitLab REST API: <https://docs.gitlab.com/api/rest/>
+- GitLab projects API: <https://docs.gitlab.com/api/projects/>
+- GitLab merge requests API: <https://docs.gitlab.com/api/merge_requests/>
+- GitLab merge methods: <https://docs.gitlab.com/user/project/merge_requests/methods/>
+- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
+- Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
+- Azure DevOps pull requests API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1>

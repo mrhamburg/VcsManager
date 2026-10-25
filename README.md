@@ -50,6 +50,11 @@ dotnet pack src/VcsManager/VcsManager.csproj -c Release
 
 The core package ID is `VcsManager.Core`.
 
+## Documentation
+
+- [Architecture decision records](docs/adr/README.md)
+- [Provider capability matrix](docs/providers/capability-matrix.md)
+
 ## License
 
 Licensed under either of the following, at your option:
