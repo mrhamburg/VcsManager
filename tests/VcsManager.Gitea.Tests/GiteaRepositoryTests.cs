@@ -286,6 +286,16 @@ public sealed class GiteaRepositoryTests
         Assert.Equal(TimeSpan.FromSeconds(30), exception.RetryAfter);
     }
 
+    [Fact]
+    public async Task DisposeAsync_DisposesClient()
+    {
+        var (provider, client) = CreateProvider();
+
+        await provider.DisposeAsync();
+
+        await client.Received(1).DisposeAsync();
+    }
+
     internal static (GiteaProvider Provider, IGiteaApiClient Client) CreateProvider(
         string? defaultOwner = TestData.Owner)
     {

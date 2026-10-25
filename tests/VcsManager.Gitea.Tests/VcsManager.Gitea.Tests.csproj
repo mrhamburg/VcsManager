@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\VcsManager\VcsManager.csproj" />
     <ProjectReference Include="..\..\src\VcsManager.Gitea\VcsManager.Gitea.csproj" />
+    <ProjectReference Include="..\VcsManager.Tests\VcsManager.Tests.csproj" />
   </ItemGroup>
 
 </Project>
