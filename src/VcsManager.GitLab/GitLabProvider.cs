@@ -215,31 +215,124 @@ public sealed class GitLabProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> CreatePullRequestAsync(
+    public async Task<PullRequest> CreatePullRequestAsync(
         RepositoryRef repository,
         CreatePullRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab merge request operations are added by a later milestone issue.");
+        ArgumentNullException.ThrowIfNull(request);
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+        ValidateCreatePullRequestRequest(request);
+
+        try
+        {
+            var mergeRequest = await _client.CreateMergeRequestAsync(
+                path,
+                request,
+                cancellationToken);
+            return GitLabMapper.ToPullRequest(mergeRequest);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "CreatePullRequest",
+                resolved);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> GetPullRequestAsync(
+    public async Task<PullRequest> GetPullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab merge request operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+        ValidatePullRequestNumber(number);
+
+        try
+        {
+            var mergeRequest = await _client.GetMergeRequestAsync(
+                path,
+                number,
+                cancellationToken);
+            return GitLabMapper.ToPullRequest(mergeRequest);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapPullRequest(
+                exception,
+                "GetPullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PagedResult<PullRequest>> ListPullRequestsAsync(
+    public async Task<PagedResult<PullRequest>> ListPullRequestsAsync(
         RepositoryRef repository,
         PullRequestQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab merge request operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+        query ??= new PullRequestQuery();
+        pagination ??= new PaginationOptions();
+
+        try
+        {
+            var page = await _client.ListMergeRequestsAsync(
+                path,
+                query,
+                pagination,
+                cancellationToken);
+
+            return new PagedResult<PullRequest>
+            {
+                Items = page.Items
+                    .Where(mergeRequest => MatchesPullRequestQuery(mergeRequest, query))
+                    .Select(GitLabMapper.ToPullRequest)
+                    .ToArray(),
+                Page = pagination.Page,
+                PageSize = pagination.PageSize,
+                TotalCount = page.TotalCount,
+                HasNextPage = page.HasNextPage,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "ListPullRequests",
+                resolved);
+        }
     }
 
     /// <inheritdoc/>
@@ -314,6 +407,52 @@ public sealed class GitLabProvider : IVcsProvider
     private static void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
     {
         RequireValue(request.Name, "A repository name is required.", nameof(request));
+    }
+
+    private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
+    {
+        RequireValue(request.Title, "A pull request title is required.", nameof(request));
+        RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
+        RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
+    }
+
+    private static void ValidatePullRequestNumber(int number)
+    {
+        if (number < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(number),
+                number,
+                "The pull request number must be at least 1.");
+        }
+    }
+
+    private static bool MatchesPullRequestQuery(GitLabMergeRequest mergeRequest, PullRequestQuery query)
+    {
+        if (query.State is { } state && mergeRequest.State != state)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Author) &&
+            !string.Equals(mergeRequest.Author, query.Author, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.SourceBranch) &&
+            !string.Equals(mergeRequest.SourceBranch, query.SourceBranch, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.TargetBranch) &&
+            !string.Equals(mergeRequest.TargetBranch, query.TargetBranch, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static bool MatchesRepositoryQuery(GitLabProject project, RepositoryQuery query)
