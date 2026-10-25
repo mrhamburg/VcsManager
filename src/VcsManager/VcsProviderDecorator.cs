@@ -1,95 +1,119 @@
-namespace VcsManager.Tests;
+namespace VcsManager;
 
-internal class DelegatingVcsProvider : IVcsProvider
+/// <summary>
+/// Base class for provider layers. Every method forwards to the inner provider.
+/// Layers are applied in registration order by <c>VcsProviderBuilder</c>, so the
+/// first registered layer is the outermost wrapper.
+/// </summary>
+public abstract class VcsProviderDecorator : IVcsProvider
 {
-    private readonly IVcsProvider _inner;
-
-    protected DelegatingVcsProvider(IVcsProvider inner)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VcsProviderDecorator"/> class.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="inner"/> is <see langword="null"/>.</exception>
+    protected VcsProviderDecorator(IVcsProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
-        _inner = inner;
+        Inner = inner;
     }
 
+    /// <summary>
+    /// Gets the wrapped provider.
+    /// </summary>
+    protected IVcsProvider Inner { get; }
+
+    /// <inheritdoc/>
     public virtual Task<VcsRepository> CreateRepositoryAsync(
         CreateRepositoryRequest request,
         CancellationToken cancellationToken = default)
     {
-        return _inner.CreateRepositoryAsync(request, cancellationToken);
+        return Inner.CreateRepositoryAsync(request, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        return _inner.GetRepositoryAsync(repository, cancellationToken);
+        return Inner.GetRepositoryAsync(repository, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
         RepositoryQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        return _inner.ListRepositoriesAsync(query, pagination, cancellationToken);
+        return Inner.ListRepositoriesAsync(query, pagination, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task DeleteRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        return _inner.DeleteRepositoryAsync(repository, cancellationToken);
+        return Inner.DeleteRepositoryAsync(repository, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<bool> RepositoryExistsAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        return _inner.RepositoryExistsAsync(repository, cancellationToken);
+        return Inner.RepositoryExistsAsync(repository, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PullRequest> CreatePullRequestAsync(
         RepositoryRef repository,
         CreatePullRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        return _inner.CreatePullRequestAsync(repository, request, cancellationToken);
+        return Inner.CreatePullRequestAsync(repository, request, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PullRequest> GetPullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return _inner.GetPullRequestAsync(repository, number, cancellationToken);
+        return Inner.GetPullRequestAsync(repository, number, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PagedResult<PullRequest>> ListPullRequestsAsync(
         RepositoryRef repository,
         PullRequestQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        return _inner.ListPullRequestsAsync(repository, query, pagination, cancellationToken);
+        return Inner.ListPullRequestsAsync(repository, query, pagination, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PullRequest> MergePullRequestAsync(
         RepositoryRef repository,
         int number,
         MergePullRequestRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        return _inner.MergePullRequestAsync(repository, number, request, cancellationToken);
+        return Inner.MergePullRequestAsync(repository, number, request, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual Task<PullRequest> ClosePullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return _inner.ClosePullRequestAsync(repository, number, cancellationToken);
+        return Inner.ClosePullRequestAsync(repository, number, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public virtual ValueTask DisposeAsync()
     {
-        return _inner.DisposeAsync();
+        return Inner.DisposeAsync();
     }
 }

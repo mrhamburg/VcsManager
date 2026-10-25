@@ -181,7 +181,7 @@ public class VcsProviderBuilderTests
         }
 
         private sealed class TrackingProvider(IVcsProvider inner, string name, List<string> calls)
-            : DelegatingVcsProvider(inner)
+            : VcsProviderDecorator(inner)
         {
             public override async Task<bool> RepositoryExistsAsync(
                 RepositoryRef repository,
