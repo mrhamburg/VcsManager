@@ -52,6 +52,11 @@ public class OtelLayerTests
         inner.GetRepositoryAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<VcsRepository>(
                 new VcsProviderException("failure")));
+        inner.SeedRepositoryAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<SeedRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         var provider = new OtelMetricsLayer(new OtelMetricsLayerOptions
         {
             MeterName = meterName,
@@ -62,11 +67,25 @@ public class OtelLayerTests
         await provider.RepositoryExistsAsync(new RepositoryRef { Owner = "acme", Name = "core" });
         await Assert.ThrowsAsync<VcsProviderException>(
             () => provider.GetRepositoryAsync(new RepositoryRef { Owner = "acme", Name = "core" }));
+        await provider.SeedRepositoryAsync(
+            new RepositoryRef { Owner = "acme", Name = "core" },
+            new SeedRepositoryRequest
+            {
+                Branch = "main",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "seed"u8.ToArray(),
+                    },
+                ],
+            });
 
         Assert.Contains("test.operation.calls", instrumentNames);
         Assert.Contains("test.operation.failures", instrumentNames);
         Assert.Contains("test.operation.duration_ms", instrumentNames);
-        Assert.Equal(2, calls);
+        Assert.Equal(3, calls);
         Assert.Equal(1, failures);
         Assert.True(duration >= 0);
     }
@@ -92,6 +111,11 @@ public class OtelLayerTests
         inner.GetRepositoryAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<VcsRepository>(
                 new VcsProviderException("failure")));
+        inner.SeedRepositoryAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<SeedRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         var provider = new OtelTraceLayer(new OtelTraceLayerOptions
         {
             ActivitySourceName = sourceName,
@@ -114,5 +138,26 @@ public class OtelLayerTests
         Assert.Equal("GetRepository", captured.DisplayName);
         Assert.Equal(ActivityStatusCode.Error, captured.Status);
         Assert.Equal(typeof(VcsProviderException).FullName, captured.GetTagItem("exception.type"));
+
+        captured = null;
+        await provider.SeedRepositoryAsync(
+            new RepositoryRef { Owner = "acme", Name = "core" },
+            new SeedRepositoryRequest
+            {
+                Branch = "main",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "seed"u8.ToArray(),
+                    },
+                ],
+            });
+
+        Assert.NotNull(captured);
+        Assert.Equal("SeedRepository", captured.DisplayName);
+        Assert.Equal("acme/core", captured.GetTagItem("vcs.repository"));
+        Assert.Equal(ActivityStatusCode.Ok, captured.Status);
     }
 }

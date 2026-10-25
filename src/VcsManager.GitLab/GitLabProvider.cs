@@ -68,6 +68,38 @@ public sealed class GitLabProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
+    public async Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var normalized = SeedRequestValidator.Normalize(request);
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+
+        try
+        {
+            await _client.SeedProjectAsync(path, normalized, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapRepository(
+                exception,
+                "SeedRepository",
+                resolved);
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)

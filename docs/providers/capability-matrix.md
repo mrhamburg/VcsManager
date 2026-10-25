@@ -18,6 +18,7 @@ This matrix describes VcsManager v1 behavior. It is a companion to the
 | Capability | GitHub | GitLab | Azure DevOps | Gitea |
 | --- | --- | --- | --- | --- |
 | Create repository | Supported | Supported | Conditional | Supported |
+| Seed repository | Supported | Supported | Supported | Supported |
 | Delete repository | Supported | Supported | Supported | Supported |
 | List repositories | Supported | Supported | Supported | Supported |
 | Create pull request | Supported | Supported | Supported | Supported |
@@ -41,10 +42,23 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 
 | Provider | Status | Notes |
 | --- | --- | --- |
-| GitHub | Supported | `Owner` selects an organization; when absent, `DefaultOwner` or the authenticated user is used. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. `DefaultBranch` is applied after creation when the repository already has a branch. |
-| GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. |
-| Azure DevOps | Conditional | The team project must already exist and is resolved from `Project` or `DefaultProject`. The organization defaults to `OrganizationUrl`. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error, and `DefaultBranch` is ignored. The token needs project administration rights for policies that require them. |
-| Gitea | Supported | `Owner` is a user or organization and defaults to `DefaultOwner`. Organization repositories use the organization endpoint; user repositories are created under the token account. Public and private visibility are mapped; `Internal` is rejected. `InitializeWithReadme` creates an initial commit. `Project` is unsupported. |
+| GitHub | Supported | `Owner` selects an organization; when absent, `DefaultOwner` or the authenticated user is used. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. `DefaultBranch` is applied after creation when the repository already has a branch. Use `SeedRepositoryAsync` with `InitializeWithReadme = false` for template content. |
+| GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. Use `SeedRepositoryAsync` with `InitializeWithReadme = false` for template content. |
+| Azure DevOps | Conditional | The team project must already exist and is resolved from `Project` or `DefaultProject`. The organization defaults to `OrganizationUrl`. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error, and `DefaultBranch` is ignored. Use `SeedRepositoryAsync` to create the first commit. The token needs project administration rights for policies that require them. |
+| Gitea | Supported | `Owner` is a user or organization and defaults to `DefaultOwner`. Organization repositories use the organization endpoint; user repositories are created under the token account. Public and private visibility are mapped; `Internal` is rejected. `InitializeWithReadme` creates an initial commit. Use `SeedRepositoryAsync` with `InitializeWithReadme = false` for template content. `Project` is unsupported. |
+
+### Seed repository
+
+| Provider | Status | Notes |
+| --- | --- | --- |
+| GitHub | Supported | Writes one initial commit with all files through the Git data API. The repository must be empty. The seeded branch becomes the default branch. The token needs contents write access. |
+| GitLab | Supported | Writes one commit with all files through the Commits API. The project must be empty. The seeded branch becomes the default branch. The token needs `api` or `write_repository`. |
+| Azure DevOps | Supported | Writes one initial commit through the Pushes API. The team project must exist and the repository must be empty. The first branch becomes the default branch. The token needs Code (Read & Write). |
+| Gitea | Supported | Writes one commit with all files through the multi-file contents API. The repository must be empty. Gitea sets the default branch on the first commit. The token needs repository write access. |
+
+Seeding creates exactly one commit. It does not chunk large templates and does
+not preserve executable bits, symlinks, submodules, or empty directories. See
+[ADR-0013](../adr/0013-repository-seeding.md).
 
 ### Delete repository
 
@@ -113,7 +127,7 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 | --- | --- |
 | GitHub | Project-scoped repository addressing; OAuth and GitHub App authentication; provider-reported total counts for pagination |
 | GitLab | GraphQL-only operations; changing project merge settings on the caller's behalf; the `Rebase` merge method |
-| Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method; `InitializeWithReadme` on repository creation |
+| Azure DevOps | Repository archive flag; cross-organization listing; reviewer vote management as part of merge; `rebaseMerge` as a distinct method; `InitializeWithReadme` on repository creation. Use `SeedRepositoryAsync` for the first commit. |
 | Gitea | Project-scoped addressing; internal repository visibility; approvals and review requests; member management; `rebase-merge`, `fast-forward-only`, and `manually-merged` merge styles |
 
 ## Provider documentation

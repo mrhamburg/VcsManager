@@ -11,6 +11,7 @@ internal sealed class FakeAzureDevOpsApiClient : IAzureDevOpsApiClient
         new(StringComparer.Ordinal);
     private readonly Dictionary<string, AzureDevOpsPullRequest> _pullRequests =
         new(StringComparer.Ordinal);
+    private readonly HashSet<string> _seededRepositories = new(StringComparer.Ordinal);
     private int _nextPullRequestId = 1;
 
     public bool MergeConflict { get; set; }
@@ -24,6 +25,10 @@ internal sealed class FakeAzureDevOpsApiClient : IAzureDevOpsApiClient
     public string? LastCompletedSourceCommitId { get; private set; }
 
     public MergePullRequestRequest? LastMergeRequest { get; private set; }
+
+    public Exception? SeedFailure { get; set; }
+
+    public SeedRepositoryRequest? LastSeedRequest { get; private set; }
 
     public Task<AzureDevOpsRepository> CreateRepositoryAsync(
         string project,
@@ -51,6 +56,33 @@ internal sealed class FakeAzureDevOpsApiClient : IAzureDevOpsApiClient
 
         _repositories[key] = repository;
         return Task.FromResult(repository);
+    }
+
+    public Task SeedRepositoryAsync(
+        string project,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        LastSeedRequest = request;
+
+        if (SeedFailure is not null)
+        {
+            throw SeedFailure;
+        }
+
+        var repository = GetRepositoryOrThrow(project, name);
+        if (!_seededRepositories.Add(RepositoryKey(project, name)))
+        {
+            throw new VcsConflictException("The repository already has an initial commit.");
+        }
+
+        _repositories[RepositoryKey(project, name)] = repository with
+        {
+            DefaultBranch = $"refs/heads/{request.Branch}",
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<AzureDevOpsRepository> GetRepositoryAsync(
@@ -243,6 +275,16 @@ internal sealed class FakeAzureDevOpsApiClient : IAzureDevOpsApiClient
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
+    }
+
+    private AzureDevOpsRepository GetRepositoryOrThrow(string project, string name)
+    {
+        if (!_repositories.TryGetValue(RepositoryKey(project, name), out var repository))
+        {
+            throw new RepositoryNotFoundException(Organization, project, name);
+        }
+
+        return repository;
     }
 
     private AzureDevOpsPullRequest GetPullRequest(

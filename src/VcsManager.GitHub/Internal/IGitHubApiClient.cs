@@ -7,6 +7,12 @@ internal interface IGitHubApiClient : IAsyncDisposable
         CreateRepositoryRequest request,
         CancellationToken cancellationToken);
 
+    Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken);
+
     Task<GitHubRepository> GetRepositoryAsync(
         string owner,
         string name,

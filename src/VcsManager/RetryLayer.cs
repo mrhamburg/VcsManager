@@ -57,6 +57,14 @@ public sealed class RetryLayer : IVcsProviderLayer
             return Inner.CreateRepositoryAsync(request, cancellationToken);
         }
 
+        public override Task SeedRepositoryAsync(
+            RepositoryRef repository,
+            SeedRepositoryRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Inner.SeedRepositoryAsync(repository, request, cancellationToken);
+        }
+
         public override Task<VcsRepository> GetRepositoryAsync(
             RepositoryRef repository,
             CancellationToken cancellationToken = default)

@@ -7,11 +7,16 @@ internal sealed class FakeGitLabApiClient : IGitLabApiClient
 {
     private readonly Dictionary<string, GitLabProject> _projects = new(StringComparer.Ordinal);
     private readonly Dictionary<string, GitLabMergeRequest> _mergeRequests = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _seededProjects = new(StringComparer.Ordinal);
     private long _nextProjectId = 1;
     private long _nextMergeRequestId = 1;
     private int _nextMergeRequestIid = 1;
 
     public bool MergeConflict { get; set; }
+
+    public Exception? SeedFailure { get; set; }
+
+    public SeedRepositoryRequest? LastSeedRequest { get; private set; }
 
     public int CloseCallCount { get; private set; }
 
@@ -49,6 +54,7 @@ internal sealed class FakeGitLabApiClient : IGitLabApiClient
             DefaultBranch = request.DefaultBranch ?? (request.InitializeWithReadme ? "main" : null),
             Visibility = request.Visibility,
             Description = request.Description,
+            IsEmpty = !request.InitializeWithReadme,
             CreatedAt = DateTimeOffset.UnixEpoch,
             UpdatedAt = DateTimeOffset.UnixEpoch,
             Owner = owner,
@@ -57,6 +63,41 @@ internal sealed class FakeGitLabApiClient : IGitLabApiClient
 
         _projects[path] = created;
         return Task.FromResult(created);
+    }
+
+    public Task SeedProjectAsync(
+        string projectPath,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        LastSeedRequest = request;
+
+        if (SeedFailure is not null)
+        {
+            throw SeedFailure;
+        }
+
+        if (!_projects.TryGetValue(projectPath, out var project))
+        {
+            throw new RepositoryNotFoundException(
+                OwnerOf(projectPath),
+                ProjectOf(projectPath),
+                NameOf(projectPath));
+        }
+
+        if (!_seededProjects.Add(projectPath))
+        {
+            throw new VcsConflictException("The project already has an initial commit.");
+        }
+
+        _projects[projectPath] = project with
+        {
+            DefaultBranch = request.Branch,
+            IsEmpty = false,
+            UpdatedAt = DateTimeOffset.UnixEpoch,
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<GitLabProject> GetProjectAsync(

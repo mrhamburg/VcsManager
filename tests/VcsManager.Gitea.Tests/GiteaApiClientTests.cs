@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using VcsManager.Gitea.Internal;
 
 namespace VcsManager.Gitea.Tests;
@@ -287,6 +288,100 @@ public sealed class GiteaApiClientTests
         Assert.Contains("is_private=false", handler.Requests[0].Query, StringComparison.Ordinal);
         Assert.DoesNotContain("archived=", handler.Requests[0].Query, StringComparison.Ordinal);
         Assert.Contains("limit=5", handler.Requests[0].Query, StringComparison.Ordinal);
+    }
+
+
+    [Fact]
+    public async Task SeedRepository_CreatesOneCommitWithAllFiles()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository",
+            """
+            {
+              "id": 42,
+              "name": "test-repository",
+              "full_name": "test-owner/test-repository",
+              "html_url": "https://gitea.example.com/test-owner/test-repository",
+              "private": true,
+              "empty": true,
+              "owner": { "id": 1, "login": "test-owner" }
+            }
+            """);
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository/contents",
+            """{ "commit": { "sha": "abc" } }""");
+        await using var client = CreateClient(handler);
+
+        await client.SeedRepositoryAsync(
+            "test-owner",
+            "test-repository",
+            new SeedRepositoryRequest
+            {
+                Branch = "seeded",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "hello"u8.ToArray(),
+                    },
+                ],
+            },
+            CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.NotNull(handler.LastBody);
+        using var json = JsonDocument.Parse(handler.LastBody);
+        var root = json.RootElement;
+        Assert.Equal("seeded", root.GetProperty("branch").GetString());
+        Assert.Equal("Initial commit", root.GetProperty("message").GetString());
+        var file = root.GetProperty("files")[0];
+        Assert.Equal("create", file.GetProperty("operation").GetString());
+        Assert.Equal("README.md", file.GetProperty("path").GetString());
+        Assert.Equal(
+            "hello",
+            Encoding.UTF8.GetString(Convert.FromBase64String(file.GetProperty("content").GetString()!)));
+    }
+
+    [Fact]
+    public async Task SeedRepository_WhenRepositoryIsNotEmpty_ThrowsConflict()
+    {
+        var handler = new StubGiteaHandler();
+        handler.Map(
+            "/api/v1/repos/test-owner/test-repository",
+            """
+            {
+              "id": 42,
+              "name": "test-repository",
+              "full_name": "test-owner/test-repository",
+              "html_url": "https://gitea.example.com/test-owner/test-repository",
+              "private": true,
+              "empty": false,
+              "owner": { "id": 1, "login": "test-owner" }
+            }
+            """);
+        await using var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<VcsConflictException>(
+            () => client.SeedRepositoryAsync(
+                "test-owner",
+                "test-repository",
+                new SeedRepositoryRequest
+                {
+                    Branch = "seeded",
+                    Files =
+                    [
+                        new RepositorySeedFile
+                        {
+                            Path = "README.md",
+                            Content = "hello"u8.ToArray(),
+                        },
+                    ],
+                },
+                CancellationToken.None));
+
+        Assert.Single(handler.Requests);
     }
 
     [Fact]

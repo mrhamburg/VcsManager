@@ -20,6 +20,8 @@ internal sealed record GiteaRepository
 
     public bool IsArchived { get; init; }
 
+    public bool IsEmpty { get; init; }
+
     public DateTimeOffset? CreatedAt { get; init; }
 
     public DateTimeOffset? UpdatedAt { get; init; }

@@ -7,6 +7,11 @@ internal interface IGitLabApiClient : IAsyncDisposable
         CreateRepositoryRequest request,
         CancellationToken cancellationToken);
 
+    Task SeedProjectAsync(
+        string projectPath,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken);
+
     Task<GitLabProject> GetProjectAsync(
         string projectPath,
         CancellationToken cancellationToken);

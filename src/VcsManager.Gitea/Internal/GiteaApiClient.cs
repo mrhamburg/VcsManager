@@ -95,6 +95,40 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         return GiteaMapper.FromRepositoryResponse(response);
     }
 
+    public async Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var repository = await GetRepositoryAsync(owner, name, cancellationToken);
+        if (!repository.IsEmpty)
+        {
+            throw new VcsConflictException(
+                $"Gitea repository '{owner}/{name}' already has a commit.");
+        }
+
+        var body = new GiteaChangeFilesRequest
+        {
+            Message = request.CommitMessage ?? "Initial commit",
+            Branch = request.Branch,
+            Files = request.Files
+                .Select(file => new GiteaChangeFileOperation
+                {
+                    Operation = "create",
+                    Path = file.Path,
+                    Content = Convert.ToBase64String(file.Content.Span),
+                })
+                .ToArray(),
+        };
+
+        await SendContentAsync(
+            HttpMethod.Post,
+            $"{RepositoryPath(owner, name)}/contents",
+            body,
+            cancellationToken);
+    }
+
     public async Task<GiteaRepository> GetRepositoryAsync(
         string owner,
         string name,

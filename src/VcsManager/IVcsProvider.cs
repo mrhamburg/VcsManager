@@ -23,6 +23,27 @@ public interface IVcsProvider : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Seeds an empty repository with one initial commit from a file set.
+    /// </summary>
+    /// <param name="repository">The empty repository to seed.</param>
+    /// <param name="request">The initial commit to create.</param>
+    /// <param name="cancellationToken">A token that can cancel the operation.</param>
+    /// <returns>A task that completes when the initial commit exists.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="repository"/> or <paramref name="request"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">The request is invalid.</exception>
+    /// <exception cref="RepositoryNotFoundException">The repository does not exist.</exception>
+    /// <exception cref="VcsAuthenticationException">The credentials are missing or invalid.</exception>
+    /// <exception cref="VcsAuthorizationException">The credentials do not permit writing to the repository.</exception>
+    /// <exception cref="VcsConflictException">The repository already has a commit or the branch already exists.</exception>
+    /// <exception cref="VcsRateLimitException">The provider rate limit is exceeded.</exception>
+    /// <exception cref="VcsUnsupportedOperationException">The provider cannot seed the repository.</exception>
+    /// <exception cref="VcsProviderException">The provider returns another failure.</exception>
+    Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets one repository. This is a supporting operation.
     /// </summary>
     /// <param name="repository">The repository to get.</param>

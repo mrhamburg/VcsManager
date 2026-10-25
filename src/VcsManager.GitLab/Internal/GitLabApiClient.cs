@@ -59,7 +59,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             Description = request.Description,
             Visibility = MapVisibility(request.Visibility),
             InitializeWithReadme = request.InitializeWithReadme,
-            DefaultBranch = request.DefaultBranch,
+            DefaultBranch = request.InitializeWithReadme ? request.DefaultBranch : null,
             NamespaceId = namespaceId,
         };
 
@@ -70,6 +70,50 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             cancellationToken);
 
         return MapProject(response);
+    }
+
+    public async Task SeedProjectAsync(
+        string projectPath,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var project = await GetProjectAsync(projectPath, cancellationToken);
+        if (!project.IsEmpty)
+        {
+            throw new VcsConflictException(
+                $"GitLab project '{projectPath}' already has a commit.");
+        }
+
+        var body = new GitLabCreateCommitRequest
+        {
+            Branch = request.Branch,
+            CommitMessage = request.CommitMessage ?? "Initial commit",
+            Actions = request.Files
+                .Select(file => new GitLabCommitAction
+                {
+                    Action = "create",
+                    FilePath = file.Path,
+                    Content = Convert.ToBase64String(file.Content.Span),
+                    Encoding = "base64",
+                })
+                .ToArray(),
+        };
+
+        var encodedProject = GitLabProjectPath.Encode(projectPath);
+        await SendContentAsync(
+            HttpMethod.Post,
+            $"projects/{encodedProject}/repository/commits",
+            body,
+            cancellationToken);
+
+        if (!string.Equals(project.DefaultBranch, request.Branch, StringComparison.Ordinal))
+        {
+            await SendAsync<GitLabUpdateProjectRequest, GitLabProjectResponse>(
+                HttpMethod.Put,
+                $"projects/{encodedProject}",
+                new GitLabUpdateProjectRequest { DefaultBranch = request.Branch },
+                cancellationToken);
+        }
     }
 
     public async Task<GitLabProject> GetProjectAsync(
@@ -332,6 +376,20 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         return await ReadAsync<TResponse>(response, cancellationToken);
     }
 
+    private async Task SendContentAsync<TRequest>(
+        HttpMethod method,
+        string path,
+        TRequest body,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, path)
+        {
+            Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
+        };
+        using var response = await _client.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     private async Task<GitLabPage<T>> SendPageAsync<T>(
         string path,
         CancellationToken cancellationToken)
@@ -466,6 +524,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             Visibility = MapVisibility(response.Visibility),
             Description = response.Description,
             IsArchived = response.Archived,
+            IsEmpty = response.EmptyRepo,
             CreatedAt = response.CreatedAt,
             UpdatedAt = response.UpdatedAt,
             Owner = owner,

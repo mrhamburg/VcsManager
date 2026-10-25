@@ -62,6 +62,75 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         return MapRepository(created, project);
     }
 
+    public async Task SeedRepositoryAsync(
+        string project,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var repositoryPath =
+            $"{Uri.EscapeDataString(project.Trim())}/_apis/git/repositories/" +
+            $"{Uri.EscapeDataString(name.Trim())}";
+
+        var refs = await SendRestAsync<AzureDevOpsRefListResponse>(
+            ProviderHttp.AddQuery(
+                $"{repositoryPath}/refs",
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["api-version"] = _options.ApiVersion,
+                    ["filter"] = "heads/",
+                }),
+            cancellationToken);
+
+        if (refs.Value is { Count: > 0 })
+        {
+            throw new VcsConflictException(
+                $"Azure DevOps repository '{project}/{name}' already has a commit.");
+        }
+
+        var push = new AzureDevOpsCreatePushRequest
+        {
+            RefUpdates =
+            [
+                new AzureDevOpsRefUpdate
+                {
+                    Name = $"refs/heads/{request.Branch}",
+                    OldObjectId = new string('0', 40),
+                },
+            ],
+            Commits =
+            [
+                new AzureDevOpsCommit
+                {
+                    Comment = request.CommitMessage ?? "Initial commit",
+                    Changes = request.Files
+                        .Select(file => new AzureDevOpsChange
+                        {
+                            ChangeType = "add",
+                            Item = new AzureDevOpsItem { Path = $"/{file.Path}" },
+                            NewContent = new AzureDevOpsItemContent
+                            {
+                                Content = Convert.ToBase64String(file.Content.Span),
+                                ContentType = "base64Encoded",
+                            },
+                        })
+                        .ToArray(),
+                },
+            ],
+        };
+
+        await SendRestContentAsync(
+            HttpMethod.Post,
+            ProviderHttp.AddQuery(
+                $"{repositoryPath}/pushes",
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["api-version"] = _options.ApiVersion,
+                }),
+            push,
+            cancellationToken);
+    }
+
     public async Task<AzureDevOpsRepository> GetRepositoryAsync(
         string project,
         string name,
@@ -296,9 +365,17 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         return client;
     }
 
-    private async Task<T> SendRestAsync<T>(string path, CancellationToken cancellationToken)
+    private Task<T> SendRestAsync<T>(string path, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        return SendRestAsync<T>(HttpMethod.Get, path, cancellationToken);
+    }
+
+    private async Task<T> SendRestAsync<T>(
+        HttpMethod method,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, path);
         using var response = await _restClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -314,6 +391,28 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
 
         return result ?? throw new VcsProviderException(
             "Azure DevOps returned an empty response body.");
+    }
+
+    private async Task SendRestContentAsync<TRequest>(
+        HttpMethod method,
+        string path,
+        TRequest body,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, path)
+        {
+            Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
+        };
+        using var response = await _restClient.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new AzureDevOpsApiException(
+                response.StatusCode,
+                responseBody,
+                ProviderHttp.GetRetryAfter(response));
+        }
     }
 
     private AzureDevOpsRepository MapRepository(GitRepository repository, string project)

@@ -111,6 +111,34 @@ var created = await provider.CreateRepositoryAsync(new CreateRepositoryRequest
 });
 ```
 
+### Seed a repository from a template folder
+
+Create an empty repository, then seed its first commit from a local folder:
+
+```csharp
+var templateDirectory = "templates/service";
+var files = Directory
+    .EnumerateFiles(templateDirectory, "*", SearchOption.AllDirectories)
+    .Select(path => new RepositorySeedFile
+    {
+        Path = Path.GetRelativePath(templateDirectory, path).Replace('\\', '/'),
+        Content = File.ReadAllBytes(path),
+    })
+    .ToArray();
+
+await provider.SeedRepositoryAsync(
+    new RepositoryRef { Owner = "my-org", Name = "new-service" },
+    new SeedRepositoryRequest
+    {
+        Branch = "main",
+        CommitMessage = "Create service from template",
+        Files = files,
+    });
+```
+
+The repository must be empty and the caller must set `InitializeWithReadme = false`
+when it creates the repository. The seeded branch becomes the default branch.
+
 :::warning[Repository deletion is permanent]
 `DeleteRepositoryAsync` removes the repository and its history. It is not
 idempotent: a second delete returns `RepositoryNotFoundException`. Use it only

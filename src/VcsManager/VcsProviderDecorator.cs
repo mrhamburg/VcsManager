@@ -32,6 +32,15 @@ public abstract class VcsProviderDecorator : IVcsProvider
     }
 
     /// <inheritdoc/>
+    public virtual Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        return Inner.SeedRepositoryAsync(repository, request, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public virtual Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)

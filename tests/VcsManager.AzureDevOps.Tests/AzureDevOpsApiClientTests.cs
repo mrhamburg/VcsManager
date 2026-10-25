@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using VcsManager.AzureDevOps.Internal;
@@ -136,6 +137,109 @@ public sealed class AzureDevOpsApiClientTests
         Assert.Equal(retryAfter, exception.RetryAfter);
     }
 
+
+    [Fact]
+    public async Task SeedRepository_PushesInitialCommit()
+    {
+        string? pushBody = null;
+        var handler = new SeedHandler(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+
+            if (request.Method == HttpMethod.Get &&
+                path.EndsWith("/refs", StringComparison.Ordinal))
+            {
+                return SeedHandler.Json("""{ "count": 0, "value": [] }""");
+            }
+
+            if (request.Method == HttpMethod.Post &&
+                path.EndsWith("/pushes", StringComparison.Ordinal))
+            {
+                pushBody = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+                return SeedHandler.Json("""{ "commits": [] }""", HttpStatusCode.Created);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        await using var client = CreateClient(handler);
+
+        await client.SeedRepositoryAsync(
+            TestData.Project,
+            "test-repository",
+            new SeedRepositoryRequest
+            {
+                Branch = "seeded",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "hello"u8.ToArray(),
+                    },
+                ],
+            },
+            CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(
+            $"/{TestData.Organization}/{TestData.Project}/_apis/git/repositories/test-repository/refs",
+            handler.Requests[0].AbsolutePath);
+        Assert.Contains("filter=heads%2F", handler.Requests[0].Query, StringComparison.Ordinal);
+        Assert.Equal(
+            $"/{TestData.Organization}/{TestData.Project}/_apis/git/repositories/test-repository/pushes",
+            handler.Requests[1].AbsolutePath);
+
+        Assert.NotNull(pushBody);
+        using var json = JsonDocument.Parse(pushBody);
+        var root = json.RootElement;
+        var refUpdate = root.GetProperty("refUpdates")[0];
+        Assert.Equal("refs/heads/seeded", refUpdate.GetProperty("name").GetString());
+        Assert.Equal(new string('0', 40), refUpdate.GetProperty("oldObjectId").GetString());
+
+        var commit = root.GetProperty("commits")[0];
+        Assert.Equal("Initial commit", commit.GetProperty("comment").GetString());
+        var change = commit.GetProperty("changes")[0];
+        Assert.Equal("add", change.GetProperty("changeType").GetString());
+        Assert.Equal("/README.md", change.GetProperty("item").GetProperty("path").GetString());
+        var content = change.GetProperty("newContent");
+        Assert.Equal("base64Encoded", content.GetProperty("contentType").GetString());
+        Assert.Equal(
+            "hello",
+            Encoding.UTF8.GetString(Convert.FromBase64String(content.GetProperty("content").GetString()!)));
+    }
+
+    [Fact]
+    public async Task SeedRepository_WhenRepositoryIsNotEmpty_ThrowsConflict()
+    {
+        var handler = new SeedHandler(_ => SeedHandler.Json("""
+            {
+              "count": 1,
+              "value": [ { "name": "refs/heads/main" } ]
+            }
+            """));
+        await using var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<VcsConflictException>(
+            () => client.SeedRepositoryAsync(
+                TestData.Project,
+                "test-repository",
+                new SeedRepositoryRequest
+                {
+                    Branch = "seeded",
+                    Files =
+                    [
+                        new RepositorySeedFile
+                        {
+                            Path = "README.md",
+                            Content = "hello"u8.ToArray(),
+                        },
+                    ],
+                },
+                CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
     private static AzureDevOpsApiClient CreateClient(HttpMessageHandler handler)
     {
         var options = new AzureDevOpsOptions
@@ -179,6 +283,30 @@ public sealed class AzureDevOpsApiClientTests
             }
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class SeedHandler(Func<HttpRequestMessage, HttpResponseMessage> response)
+        : HttpMessageHandler
+    {
+        public List<Uri> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!);
+            return Task.FromResult(response(request));
+        }
+
+        public static HttpResponseMessage Json(
+            string body,
+            HttpStatusCode statusCode = HttpStatusCode.OK)
+        {
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            };
         }
     }
 }

@@ -167,6 +167,46 @@ public abstract class VcsProviderConformanceTests
             () => provider.MergePullRequestAsync(repository, pullRequest.Number));
     }
 
+    [Fact]
+    public async Task SeedRepository_CreatesInitialCommitAndRejectsSecondSeed()
+    {
+        await using var provider = CreateProvider();
+        var repository = CreateRepositoryRef("seed");
+        await provider.CreateRepositoryAsync(CreateRepositoryRequest(repository.Name));
+
+        await provider.SeedRepositoryAsync(repository, CreateSeedRequest("seeded"));
+
+        var fetched = await provider.GetRepositoryAsync(repository);
+        Assert.Equal("seeded", fetched.DefaultBranch);
+
+        await Assert.ThrowsAsync<VcsConflictException>(
+            () => provider.SeedRepositoryAsync(repository, CreateSeedRequest("seeded")));
+    }
+
+    [Fact]
+    public async Task SeedRepository_WithInvalidPath_ThrowsArgumentException()
+    {
+        await using var provider = CreateProvider();
+        var repository = CreateRepositoryRef("seed-invalid");
+        await provider.CreateRepositoryAsync(CreateRepositoryRequest(repository.Name));
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.SeedRepositoryAsync(
+                repository,
+                new SeedRepositoryRequest
+                {
+                    Branch = "main",
+                    Files =
+                    [
+                        new RepositorySeedFile
+                        {
+                            Path = "../outside.txt",
+                            Content = new byte[] { 1, 2, 3 },
+                        },
+                    ],
+                }));
+    }
+
     /// <summary>
     /// Creates a repository reference for the conformance scenario.
     /// </summary>
@@ -198,6 +238,22 @@ public abstract class VcsProviderConformanceTests
             Title = "Conformance change",
             SourceBranch = sourceBranch,
             TargetBranch = "main",
+        };
+    }
+
+    private static SeedRepositoryRequest CreateSeedRequest(string branch)
+    {
+        return new SeedRepositoryRequest
+        {
+            Branch = branch,
+            Files =
+            [
+                new RepositorySeedFile
+                {
+                    Path = "README.md",
+                    Content = "Conformance seed"u8.ToArray(),
+                },
+            ],
         };
     }
 

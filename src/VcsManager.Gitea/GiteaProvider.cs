@@ -67,6 +67,38 @@ public sealed class GiteaProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
+    public async Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var normalized = SeedRequestValidator.Normalize(request);
+        var (owner, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.SeedRepositoryAsync(owner, name, normalized, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapRepository(
+                exception,
+                "SeedRepository",
+                owner,
+                name);
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)

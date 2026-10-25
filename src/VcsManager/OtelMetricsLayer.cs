@@ -73,6 +73,23 @@ public sealed class OtelMetricsLayer : IVcsProviderLayer
                 cancellationToken);
         }
 
+        public override Task SeedRepositoryAsync(
+            RepositoryRef repository,
+            SeedRepositoryRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return ExecuteAsync(
+                "SeedRepository",
+                RepositoryDisplayName.Format(repository),
+                pullRequestNumber: null,
+                async token =>
+                {
+                    await Inner.SeedRepositoryAsync(repository, request, token);
+                    return true;
+                },
+                cancellationToken);
+        }
+
         public override Task<VcsRepository> GetRepositoryAsync(
             RepositoryRef repository,
             CancellationToken cancellationToken = default)

@@ -7,6 +7,12 @@ internal interface IAzureDevOpsApiClient : IAsyncDisposable
         CreateRepositoryRequest request,
         CancellationToken cancellationToken);
 
+    Task SeedRepositoryAsync(
+        string project,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken);
+
     Task<AzureDevOpsRepository> GetRepositoryAsync(
         string project,
         string name,

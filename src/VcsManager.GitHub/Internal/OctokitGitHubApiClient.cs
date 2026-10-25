@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using Octokit;
 using OctoPullRequest = Octokit.PullRequest;
 
@@ -53,6 +54,62 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         }
 
         return MapRepository(repository);
+    }
+
+    public async Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var repository = await _client.Repository.Get(owner, name);
+        await EnsureEmptyRepositoryAsync(owner, name, cancellationToken);
+
+        var treeItems = new List<NewTreeItem>(request.Files.Count);
+        foreach (var file in request.Files)
+        {
+            var blob = await _client.Git.Blob.Create(
+                owner,
+                name,
+                new NewBlob
+                {
+                    Content = Convert.ToBase64String(file.Content.Span),
+                    Encoding = EncodingType.Base64,
+                });
+
+            treeItems.Add(new NewTreeItem
+            {
+                Path = file.Path,
+                Mode = "100644",
+                Type = TreeType.Blob,
+                Sha = blob.Sha,
+            });
+        }
+
+        var newTree = new NewTree();
+        foreach (var treeItem in treeItems)
+        {
+            newTree.Tree.Add(treeItem);
+        }
+
+        var tree = await _client.Git.Tree.Create(owner, name, newTree);
+        var commit = await _client.Git.Commit.Create(
+            owner,
+            name,
+            new NewCommit(request.CommitMessage ?? "Initial commit", tree.Sha));
+
+        await _client.Git.Reference.Create(
+            owner,
+            name,
+            new NewReference($"refs/heads/{request.Branch}", commit.Sha));
+
+        if (!string.Equals(repository.DefaultBranch, request.Branch, StringComparison.Ordinal))
+        {
+            await _client.Repository.Edit(
+                owner,
+                name,
+                new RepositoryUpdate { DefaultBranch = request.Branch });
+        }
     }
 
     public async Task<GitHubRepository> GetRepositoryAsync(
@@ -214,6 +271,26 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
+    }
+
+    private async Task EnsureEmptyRepositoryAsync(
+        string owner,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var references = await _client.Git.Reference.GetAll(owner, name);
+            if (references.Count > 0)
+            {
+                throw new VcsConflictException(
+                    $"Repository '{owner}/{name}' already has a commit.");
+            }
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            // GitHub reports a conflict when the repository has no commits.
+        }
     }
 
     private Uri BuildUri(string path)

@@ -15,6 +15,24 @@ internal sealed class GiteaCreateRepositoryRequest
     public string? DefaultBranch { get; set; }
 }
 
+internal sealed class GiteaChangeFilesRequest
+{
+    public required string Message { get; set; }
+
+    public required string Branch { get; set; }
+
+    public required IReadOnlyList<GiteaChangeFileOperation> Files { get; set; }
+}
+
+internal sealed class GiteaChangeFileOperation
+{
+    public required string Operation { get; set; }
+
+    public required string Path { get; set; }
+
+    public required string Content { get; set; }
+}
+
 internal sealed class GiteaCreatePullRequestRequest
 {
     public required string Head { get; set; }
@@ -61,6 +79,8 @@ internal sealed class GiteaRepositoryResponse
     public bool Internal { get; set; }
 
     public bool Archived { get; set; }
+
+    public bool Empty { get; set; }
 
     public DateTimeOffset? CreatedAt { get; set; }
 

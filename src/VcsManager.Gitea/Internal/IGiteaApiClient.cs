@@ -7,6 +7,12 @@ internal interface IGiteaApiClient : IAsyncDisposable
         CreateRepositoryRequest request,
         CancellationToken cancellationToken);
 
+    Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken);
+
     Task<GiteaRepository> GetRepositoryAsync(
         string owner,
         string name,

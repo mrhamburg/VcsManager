@@ -62,6 +62,7 @@ internal static class GiteaMapper
             Visibility = response.Private ? VcsVisibility.Private : VcsVisibility.Public,
             Description = response.Description,
             IsArchived = response.Archived,
+            IsEmpty = response.Empty,
             CreatedAt = response.CreatedAt,
             UpdatedAt = response.UpdatedAt,
         };

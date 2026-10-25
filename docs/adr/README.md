@@ -25,6 +25,7 @@ supersedes it.
 | [0010](0010-exception-contract.md) | Exception contract and HTTP status mapping | Accepted |
 | [0011](0011-gitea-client.md) | Gitea uses REST API v1 with `HttpClient` | Accepted |
 | [0012](0012-provider-listing-and-merge-scope.md) | Provider listing and merge scope for v1 | Accepted |
+| [0013](0013-repository-seeding.md) | Repository seeding from a template | Accepted |
 
 See the [provider capability matrix](../providers/capability-matrix.md) for the
 supported, conditional, and unsupported operations per provider.

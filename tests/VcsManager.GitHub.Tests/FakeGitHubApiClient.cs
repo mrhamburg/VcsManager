@@ -6,6 +6,7 @@ internal sealed class FakeGitHubApiClient : IGitHubApiClient
 {
     private readonly Dictionary<string, GitHubRepository> _repositories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, GitHubPullRequest> _pullRequests = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _seededRepositories = new(StringComparer.Ordinal);
     private long _nextRepositoryId = 1;
     private long _nextPullRequestId = 1;
     private int _nextPullRequestNumber = 1;
@@ -19,6 +20,10 @@ internal sealed class FakeGitHubApiClient : IGitHubApiClient
     public Exception? CreatePullRequestFailure { get; set; }
 
     public Exception? DeleteBranchFailure { get; set; }
+
+    public Exception? SeedFailure { get; set; }
+
+    public SeedRepositoryRequest? LastSeedRequest { get; private set; }
 
     public List<string> DeletedBranches { get; } = [];
 
@@ -58,6 +63,34 @@ internal sealed class FakeGitHubApiClient : IGitHubApiClient
 
         _repositories[RepositoryKey(resolvedOwner, request.Name)] = repository;
         return Task.FromResult(repository);
+    }
+
+    public Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        LastSeedRequest = request;
+
+        if (SeedFailure is not null)
+        {
+            throw SeedFailure;
+        }
+
+        var repository = GetRepositoryOrThrow(owner, name);
+        if (!_seededRepositories.Add(repository.FullName))
+        {
+            throw new VcsConflictException("The repository already has an initial commit.");
+        }
+
+        _repositories[RepositoryKey(owner, name)] = repository with
+        {
+            DefaultBranch = request.Branch,
+            UpdatedAt = DateTimeOffset.UnixEpoch,
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<GitHubRepository> GetRepositoryAsync(

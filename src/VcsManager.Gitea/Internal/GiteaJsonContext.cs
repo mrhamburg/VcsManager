@@ -7,6 +7,8 @@ namespace VcsManager.Gitea.Internal;
     PropertyNameCaseInsensitive = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(GiteaCreateRepositoryRequest))]
+[JsonSerializable(typeof(GiteaChangeFilesRequest))]
+[JsonSerializable(typeof(GiteaChangeFileOperation))]
 [JsonSerializable(typeof(GiteaCreatePullRequestRequest))]
 [JsonSerializable(typeof(GiteaEditPullRequestRequest))]
 [JsonSerializable(typeof(GiteaMergePullRequestRequest))]

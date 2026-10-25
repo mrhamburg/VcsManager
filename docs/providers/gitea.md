@@ -101,6 +101,7 @@ Create an access token in **Settings > Applications**. The minimum scopes are:
 | --- | --- |
 | List repositories, get a repository, check a repository | `read:repository`; `read:user` and `read:organization` for owner-scoped listing |
 | Create or delete a repository | `write:repository`; `write:organization` for organization repositories |
+| Seed a repository with an initial commit | `write:repository` |
 | List pull requests, get a pull request | `read:repository` |
 | Create, merge, or close a pull request | `write:repository` |
 
@@ -157,6 +158,11 @@ and throws `VcsUnsupportedOperationException` for any other user.
 
 `Description`, `DefaultBranch`, and `InitializeWithReadme` map to the Gitea
 create-repository fields. `InitializeWithReadme` creates an initial commit.
+`SeedRepositoryAsync` writes one commit with all supplied files through the
+multi-file contents API. The repository must be empty and the token needs
+repository write access. Gitea sets the seeded branch as the default branch.
+The provider does not preserve executable bits, symlinks, submodules, or empty
+directories.
 `Public` maps to `private = false`, `Private` maps to `private = true`, and
 `Internal` is rejected with a validation error.
 

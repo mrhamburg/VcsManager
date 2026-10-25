@@ -9,8 +9,10 @@ The integration tests are a console runner. The runner tests the full
 4. Close a pull request a second time to verify idempotency.
 5. Delete the repository and verify that it is gone.
 
-The runner seeds the branches that the pull request steps need. The seeding is
-test-only and is not part of the public API. The runner never prints tokens.
+The runner creates the initial repository commit with `SeedRepositoryAsync`.
+It still uses a test-only helper to create the branches that the pull request
+steps need. The branch helper is not part of the public API. The runner never
+prints tokens.
 
 Each provider has a YAML sample in `configs/`. The config uses the same format
 as `VcsProviderBuilder.FromYamlFile`.
@@ -83,7 +85,8 @@ the server URL.
 The team project must already exist. Set `default.project` to that project.
 Use a personal access token with permission to create and delete repositories
 in the project. Azure DevOps creates an empty repository, so the runner seeds
-the default branch before it creates the pull request branches.
+the default branch through `SeedRepositoryAsync` before it creates the pull
+request branches.
 
 ## CI
 

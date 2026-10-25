@@ -19,6 +19,31 @@ internal sealed class GitLabCreateProjectRequest
     public long? NamespaceId { get; set; }
 }
 
+internal sealed class GitLabCreateCommitRequest
+{
+    public required string Branch { get; set; }
+
+    public required string CommitMessage { get; set; }
+
+    public required IReadOnlyList<GitLabCommitAction> Actions { get; set; }
+}
+
+internal sealed class GitLabCommitAction
+{
+    public required string Action { get; set; }
+
+    public required string FilePath { get; set; }
+
+    public required string Content { get; set; }
+
+    public required string Encoding { get; set; }
+}
+
+internal sealed class GitLabUpdateProjectRequest
+{
+    public required string DefaultBranch { get; set; }
+}
+
 internal sealed class GitLabCreateMergeRequestRequest
 {
     public required string SourceBranch { get; set; }
@@ -65,6 +90,8 @@ internal sealed class GitLabProjectResponse
     public string? Description { get; set; }
 
     public bool Archived { get; set; }
+
+    public bool EmptyRepo { get; set; }
 
     public DateTimeOffset? CreatedAt { get; set; }
 

@@ -9,6 +9,7 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
         new(StringComparer.Ordinal);
     private readonly Dictionary<string, GiteaPullRequest> _pullRequests =
         new(StringComparer.Ordinal);
+    private readonly HashSet<string> _seededRepositories = new(StringComparer.Ordinal);
     private long _nextRepositoryId = 1;
     private long _nextPullRequestId = 1;
     private int _nextPullRequestNumber = 1;
@@ -20,6 +21,10 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
     public int MergeCallCount { get; private set; }
 
     public int CloseCallCount { get; private set; }
+
+    public Exception? SeedFailure { get; set; }
+
+    public SeedRepositoryRequest? LastSeedRequest { get; private set; }
 
     public Task<GiteaRepository> CreateRepositoryAsync(
         string owner,
@@ -43,12 +48,42 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
             DefaultBranch = request.DefaultBranch ?? (request.InitializeWithReadme ? "main" : null),
             Visibility = request.Visibility,
             Description = request.Description,
+            IsEmpty = !request.InitializeWithReadme,
             CreatedAt = DateTimeOffset.UnixEpoch,
             UpdatedAt = DateTimeOffset.UnixEpoch,
         };
 
         _repositories[key] = repository;
         return Task.FromResult(repository);
+    }
+
+    public Task SeedRepositoryAsync(
+        string owner,
+        string name,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        LastSeedRequest = request;
+
+        if (SeedFailure is not null)
+        {
+            throw SeedFailure;
+        }
+
+        var repository = GetRepositoryOrThrow(owner, name);
+        if (!_seededRepositories.Add(repository.FullName))
+        {
+            throw new VcsConflictException("The repository already has an initial commit.");
+        }
+
+        _repositories[RepositoryKey(owner, name)] = repository with
+        {
+            DefaultBranch = request.Branch,
+            IsEmpty = false,
+            UpdatedAt = DateTimeOffset.UnixEpoch,
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<GiteaRepository> GetRepositoryAsync(
@@ -253,6 +288,16 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
+    }
+
+    private GiteaRepository GetRepositoryOrThrow(string owner, string name)
+    {
+        if (!_repositories.TryGetValue(RepositoryKey(owner, name), out var repository))
+        {
+            throw new RepositoryNotFoundException(owner, project: null, name);
+        }
+
+        return repository;
     }
 
     private GiteaPullRequest GetPullRequest(string owner, string repositoryName, int number)

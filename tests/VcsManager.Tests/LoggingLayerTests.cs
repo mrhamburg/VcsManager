@@ -35,6 +35,43 @@ public class LoggingLayerTests
         Assert.Contains("success:GetPullRequest:acme/platform/core:7:github", logger.Events);
     }
 
+
+    [Fact]
+    public async Task LogsSeedWithoutFileContent()
+    {
+        var logger = new RecordingLogger();
+        var inner = Substitute.For<IVcsProvider>();
+        inner.SeedRepositoryAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<SeedRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var provider = new LoggingLayer(new LoggingLayerOptions
+        {
+            ProviderName = "github",
+            Logger = logger,
+        }).Wrap(inner);
+
+        await provider.SeedRepositoryAsync(
+            new RepositoryRef { Owner = "acme", Name = "core" },
+            new SeedRepositoryRequest
+            {
+                Branch = "main",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "super-secret"u8.ToArray(),
+                    },
+                ],
+            });
+
+        Assert.Contains("start:SeedRepository:acme/core::github", logger.Events);
+        Assert.Contains("success:SeedRepository:acme/core::github", logger.Events);
+        Assert.DoesNotContain("super-secret", string.Join("|", logger.Events));
+    }
+
     [Fact]
     public async Task DoesNotLogRequestContent()
     {

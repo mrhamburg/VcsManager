@@ -88,6 +88,12 @@ public sealed class AcmeVcsProvider : IVcsProvider
         CancellationToken cancellationToken = default) =>
         throw new VcsUnsupportedOperationException("acme", nameof(CreateRepositoryAsync));
 
+    public Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new VcsUnsupportedOperationException("acme", nameof(SeedRepositoryAsync));
+
     public Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
         RepositoryQuery? query = null,
         PaginationOptions? pagination = null,

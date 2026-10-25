@@ -69,6 +69,39 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
+    public async Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var normalized = SeedRequestValidator.Normalize(request);
+        var (owner, project, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.SeedRepositoryAsync(project, name, normalized, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "SeedRepository",
+                owner,
+                project,
+                name);
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)

@@ -122,7 +122,7 @@ these repository permissions:
 | Permission | Access | Used for |
 | --- | --- | --- |
 | Metadata | Read | Required by GitHub for every fine-grained token. |
-| Contents | Read and write | Repository contents, initial readme, and branch deletion. |
+| Contents | Read and write | Repository contents, initial readme, repository seeding, and branch deletion. |
 | Administration | Read and write | Repository creation and deletion. |
 | Pull requests | Read and write | Creating, listing, merging, and closing pull requests. |
 
@@ -162,6 +162,11 @@ request, so the provider updates it after creation when the new repository
 already has a branch. An empty repository has no branch to select. `Internal`
 visibility is supported only on GitHub plans and servers that allow it; when
 GitHub rejects it, the provider throws `VcsUnsupportedOperationException`.
+
+`SeedRepositoryAsync` writes one initial commit with all supplied files through
+the GitHub Git data API. The repository must be empty. The seeded branch becomes
+the default branch. The token needs Contents write permission. The provider does
+not preserve executable bits, symlinks, submodules, or empty directories.
 
 `GetRepositoryAsync`, `RepositoryExistsAsync`, and `DeleteRepositoryAsync`
 accept an owner and name. `RepositoryExistsAsync` returns `false` for a missing

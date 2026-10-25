@@ -59,6 +59,16 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
                 cancellationToken);
         }
 
+        public override Task SeedRepositoryAsync(
+            RepositoryRef repository,
+            SeedRepositoryRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return ExecuteAsync(
+                token => Inner.SeedRepositoryAsync(repository, request, token),
+                cancellationToken);
+        }
+
         public override Task<VcsRepository> GetRepositoryAsync(
             RepositoryRef repository,
             CancellationToken cancellationToken = default)

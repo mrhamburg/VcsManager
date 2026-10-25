@@ -17,6 +17,18 @@ public class VcsProviderDecoratorTests
             Url = "https://example.test/core",
         };
         var createRepositoryRequest = new CreateRepositoryRequest { Name = "core" };
+        var seedRepositoryRequest = new SeedRepositoryRequest
+        {
+            Branch = "main",
+            Files =
+            [
+                new RepositorySeedFile
+                {
+                    Path = "README.md",
+                    Content = "seed"u8.ToArray(),
+                },
+            ],
+        };
         var createPullRequestRequest = new CreatePullRequestRequest
         {
             Title = "Add feature",
@@ -42,6 +54,8 @@ public class VcsProviderDecoratorTests
 
         inner.CreateRepositoryAsync(createRepositoryRequest, Arg.Any<CancellationToken>())
             .Returns(repository);
+        inner.SeedRepositoryAsync(repositoryRef, seedRepositoryRequest, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         inner.GetRepositoryAsync(repositoryRef, Arg.Any<CancellationToken>())
             .Returns(repository);
         inner.ListRepositoriesAsync(
@@ -69,6 +83,7 @@ public class VcsProviderDecoratorTests
         var decorator = new PassThroughDecorator(inner);
 
         Assert.Same(repository, await decorator.CreateRepositoryAsync(createRepositoryRequest));
+        await decorator.SeedRepositoryAsync(repositoryRef, seedRepositoryRequest);
         Assert.Same(repository, await decorator.GetRepositoryAsync(repositoryRef));
         Assert.Same(repositoryPage, await decorator.ListRepositoriesAsync(repositoryQuery, pagination));
         await decorator.DeleteRepositoryAsync(repositoryRef);
@@ -82,6 +97,10 @@ public class VcsProviderDecoratorTests
         Assert.Same(pullRequest, await decorator.ClosePullRequestAsync(repositoryRef, 1));
 
         await inner.Received(1).CreateRepositoryAsync(createRepositoryRequest, Arg.Any<CancellationToken>());
+        await inner.Received(1).SeedRepositoryAsync(
+            repositoryRef,
+            seedRepositoryRequest,
+            Arg.Any<CancellationToken>());
         await inner.Received(1).GetRepositoryAsync(repositoryRef, Arg.Any<CancellationToken>());
         await inner.Received(1).ListRepositoriesAsync(
             repositoryQuery,

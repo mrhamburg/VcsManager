@@ -1,3 +1,5 @@
+using VcsManager.Internal;
+
 namespace VcsManager.Tests;
 
 internal sealed class FakeVcsProvider : IVcsProvider
@@ -5,6 +7,7 @@ internal sealed class FakeVcsProvider : IVcsProvider
     private const string KeySeparator = "\u001F";
     private readonly Dictionary<string, VcsRepository> _repositories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PullRequest> _pullRequests = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _seededRepositories = new(StringComparer.Ordinal);
     private readonly bool _mergeConflict;
     private readonly MergeMethod? _unsupportedMergeMethod;
     private int _nextPullRequestNumber = 1;
@@ -41,6 +44,35 @@ internal sealed class FakeVcsProvider : IVcsProvider
 
         _repositories[RepositoryKey(request.Owner, request.Project, request.Name)] = repository;
         return Task.FromResult(repository);
+    }
+
+    public Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(request);
+        var normalized = SeedRequestValidator.Normalize(request);
+        var key = RepositoryKey(repository);
+
+        if (!_repositories.TryGetValue(key, out var existing))
+        {
+            throw new RepositoryNotFoundException(repository.Owner, repository.Project, repository.Name);
+        }
+
+        if (!_seededRepositories.Add(key))
+        {
+            throw new VcsConflictException("The repository already has an initial commit.");
+        }
+
+        _repositories[key] = existing with
+        {
+            DefaultBranch = normalized.Branch,
+            UpdatedAt = DateTimeOffset.UnixEpoch,
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<VcsRepository> GetRepositoryAsync(

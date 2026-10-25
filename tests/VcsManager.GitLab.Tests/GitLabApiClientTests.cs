@@ -125,6 +125,169 @@ public sealed class GitLabApiClientTests
         Assert.Equal("main", root.GetProperty("default_branch").GetString());
     }
 
+
+    [Fact]
+    public async Task SeedProject_CreatesOneCommitAndSetsDefaultBranch()
+    {
+        string? commitBody = null;
+        string? updateBody = null;
+        var handler = new RecordingHandler(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+
+            if (request.Method == HttpMethod.Get &&
+                path == "/api/v4/projects/group%2Fproject")
+            {
+                return JsonResponse("""
+                    {
+                      "id": 42,
+                      "name": "project",
+                      "path": "project",
+                      "path_with_namespace": "group/project",
+                      "web_url": "https://gitlab.test/group/project",
+                      "visibility": "private",
+                      "empty_repo": true,
+                      "default_branch": null
+                    }
+                    """);
+            }
+
+            if (request.Method == HttpMethod.Post &&
+                path == "/api/v4/projects/group%2Fproject/repository/commits")
+            {
+                commitBody = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+                return JsonResponse("""{ "id": "abc" }""");
+            }
+
+            if (request.Method == HttpMethod.Put &&
+                path == "/api/v4/projects/group%2Fproject")
+            {
+                updateBody = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+                return JsonResponse("""
+                    {
+                      "id": 42,
+                      "name": "project",
+                      "path": "project",
+                      "path_with_namespace": "group/project",
+                      "web_url": "https://gitlab.test/group/project",
+                      "visibility": "private",
+                      "default_branch": "seeded"
+                    }
+                    """);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        await using var client = CreateClient(handler);
+
+        await client.SeedProjectAsync(
+            "group/project",
+            new SeedRepositoryRequest
+            {
+                Branch = "seeded",
+                Files =
+                [
+                    new RepositorySeedFile
+                    {
+                        Path = "README.md",
+                        Content = "hello"u8.ToArray(),
+                    },
+                ],
+            },
+            CancellationToken.None);
+
+        Assert.Equal(3, handler.Requests.Count);
+        Assert.NotNull(commitBody);
+        using var commitJson = JsonDocument.Parse(commitBody);
+        var commit = commitJson.RootElement;
+        Assert.Equal("seeded", commit.GetProperty("branch").GetString());
+        Assert.Equal("Initial commit", commit.GetProperty("commit_message").GetString());
+        var action = commit.GetProperty("actions")[0];
+        Assert.Equal("create", action.GetProperty("action").GetString());
+        Assert.Equal("README.md", action.GetProperty("file_path").GetString());
+        Assert.Equal("base64", action.GetProperty("encoding").GetString());
+        Assert.Equal(
+            "hello",
+            Encoding.UTF8.GetString(Convert.FromBase64String(action.GetProperty("content").GetString()!)));
+
+        Assert.NotNull(updateBody);
+        using var updateJson = JsonDocument.Parse(updateBody);
+        Assert.Equal("seeded", updateJson.RootElement.GetProperty("default_branch").GetString());
+    }
+
+    [Fact]
+    public async Task SeedProject_WhenProjectIsNotEmpty_ThrowsConflict()
+    {
+        var handler = new RecordingHandler(_ => JsonResponse("""
+            {
+              "id": 42,
+              "name": "project",
+              "path": "project",
+              "path_with_namespace": "group/project",
+              "web_url": "https://gitlab.test/group/project",
+              "visibility": "private",
+              "empty_repo": false
+            }
+            """));
+        await using var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<VcsConflictException>(
+            () => client.SeedProjectAsync(
+                "group/project",
+                new SeedRepositoryRequest
+                {
+                    Branch = "seeded",
+                    Files =
+                    [
+                        new RepositorySeedFile
+                        {
+                            Path = "README.md",
+                            Content = "hello"u8.ToArray(),
+                        },
+                    ],
+                },
+                CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
+
+    [Fact]
+    public async Task CreateProject_WithoutReadme_DoesNotSendDefaultBranch()
+    {
+        string? body = null;
+        var handler = new RecordingHandler(request =>
+        {
+            body = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+            return JsonResponse("""
+                {
+                  "id": 9,
+                  "name": "project",
+                  "path": "project",
+                  "path_with_namespace": "123/project",
+                  "web_url": "https://gitlab.test/123/project",
+                  "visibility": "private"
+                }
+                """);
+        });
+        await using var client = CreateClient(handler);
+
+        await client.CreateProjectAsync(
+            "123",
+            new CreateRepositoryRequest
+            {
+                Name = "project",
+                InitializeWithReadme = false,
+                DefaultBranch = "main",
+            },
+            CancellationToken.None);
+
+        Assert.NotNull(body);
+        using var json = JsonDocument.Parse(body);
+        Assert.False(json.RootElement.GetProperty("initialize_with_readme").GetBoolean());
+        Assert.False(json.RootElement.TryGetProperty("default_branch", out _));
+    }
+
     [Fact]
     public async Task MergeMergeRequest_SendsSquashAndBranchDeletion()
     {

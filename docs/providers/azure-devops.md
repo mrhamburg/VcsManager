@@ -100,6 +100,7 @@ Create a personal access token with the **Code** scope.
 | --- | --- |
 | List repositories, get a repository, check a repository | Code (Read) |
 | Create a repository | Code (Read & Write) |
+| Seed a repository with an initial commit | Code (Read & Write) |
 | Delete a repository | Code (Read & Write), plus project administration where organization policy requires it |
 | List pull requests, get a pull request | Code (Read) |
 | Create, merge, or close a pull request | Code (Read & Write) |
@@ -148,6 +149,11 @@ Repository IDs are GUIDs. `VcsRepository.Id` contains the GUID string.
 project. Azure DevOps creates the default branch on the first push, so
 `DefaultBranch` is accepted but has no effect. `InitializeWithReadme` is not
 supported and throws `VcsUnsupportedOperationException`.
+
+`SeedRepositoryAsync` writes one initial commit through the REST API 7.1 Pushes
+endpoint. The repository must be empty. The first branch becomes the default
+branch. The token needs Code (Read & Write). The provider does not preserve
+executable bits, symlinks, submodules, or empty directories.
 
 `GetRepositoryAsync`, `RepositoryExistsAsync`, and `DeleteRepositoryAsync`
 resolve the organization and team project with the same rules. They accept a

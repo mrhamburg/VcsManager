@@ -9,7 +9,6 @@ internal sealed class IntegrationScenario
 
     private readonly IVcsProvider _provider;
     private readonly VcsProviderConfiguration _configuration;
-    private readonly bool _isAzureDevOps;
     private int _passed;
     private int _failed;
 
@@ -17,9 +16,6 @@ internal sealed class IntegrationScenario
     {
         _provider = provider;
         _configuration = configuration;
-        _isAzureDevOps = configuration.ProviderName.Equals(
-            "azuredevops",
-            StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<int> RunAsync()
@@ -37,8 +33,7 @@ internal sealed class IntegrationScenario
                 {
                     Name = repositoryName,
                     Visibility = VcsVisibility.Private,
-                    InitializeWithReadme = !_isAzureDevOps,
-                    DefaultBranch = "main",
+                    InitializeWithReadme = false,
                 });
 
                 Assert(created.Name == repositoryName, $"Expected repository '{repositoryName}', got '{created.Name}'.");
@@ -92,6 +87,24 @@ internal sealed class IntegrationScenario
                 Assert(
                     page.Items.Any(item => item.Name == repositoryName),
                     $"Expected the repository list to contain '{repositoryName}'.");
+            });
+
+            await RunStepAsync("Seed repository", async () =>
+            {
+                await _provider.SeedRepositoryAsync(
+                    reference,
+                    new SeedRepositoryRequest
+                    {
+                        Branch = defaultBranch,
+                        Files =
+                        [
+                            new RepositorySeedFile
+                            {
+                                Path = "README.md",
+                                Content = "VcsManager integration test repository."u8.ToArray(),
+                            },
+                        ],
+                    });
             });
 
             using var seeder = new ProviderBranchSeeder(_configuration, created);

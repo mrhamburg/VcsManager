@@ -30,6 +30,11 @@ public interface IVcsProvider : IAsyncDisposable
         CreateRepositoryRequest request,
         CancellationToken cancellationToken = default);
 
+    Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default);
@@ -97,6 +102,21 @@ public interface IVcsProvider : IAsyncDisposable
 | `Visibility` | `VcsVisibility` | `Private` | Private, internal, or public. |
 | `InitializeWithReadme` | `bool` | `false` | Create an initial commit with a readme. |
 | `DefaultBranch` | `string?` | `null` | Default branch when the provider supports it. |
+
+### SeedRepositoryRequest
+
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `Branch` | `string` | Yes | Branch that receives the initial commit and becomes the default branch. |
+| `Files` | `IReadOnlyList<RepositorySeedFile>` | Yes | Files to write in one initial commit. |
+| `CommitMessage` | `string?` | No | Commit message. Defaults to `Initial commit`. |
+
+### RepositorySeedFile
+
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `Path` | `string` | Yes | Relative path with forward slashes. |
+| `Content` | `ReadOnlyMemory<byte>` | Yes | Binary file content. |
 
 ### RepositoryQuery
 

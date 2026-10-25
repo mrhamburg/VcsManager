@@ -184,6 +184,41 @@ public class RetryLayerTests
             Arg.Any<CancellationToken>());
     }
 
+
+    [Fact]
+    public async Task DoesNotRetryRepositorySeeding()
+    {
+        var inner = Substitute.For<IVcsProvider>();
+        inner.SeedRepositoryAsync(
+                Arg.Any<RepositoryRef>(),
+                Arg.Any<SeedRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(
+                Transient(HttpStatusCode.ServiceUnavailable)));
+
+        var provider = new RetryLayer(FastOptions(maxAttempts: 3)).Wrap(inner);
+        var request = new SeedRepositoryRequest
+        {
+            Branch = "main",
+            Files =
+            [
+                new RepositorySeedFile
+                {
+                    Path = "README.md",
+                    Content = "seed"u8.ToArray(),
+                },
+            ],
+        };
+
+        await Assert.ThrowsAsync<VcsProviderException>(
+            () => provider.SeedRepositoryAsync(new RepositoryRef { Name = "core" }, request));
+
+        await inner.Received(1).SeedRepositoryAsync(
+            Arg.Any<RepositoryRef>(),
+            request,
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task DoesNotRetryPullRequestCreation()
     {

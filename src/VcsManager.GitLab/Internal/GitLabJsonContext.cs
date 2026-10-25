@@ -7,6 +7,9 @@ namespace VcsManager.GitLab.Internal;
     PropertyNameCaseInsensitive = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(GitLabCreateProjectRequest))]
+[JsonSerializable(typeof(GitLabCreateCommitRequest))]
+[JsonSerializable(typeof(GitLabCommitAction))]
+[JsonSerializable(typeof(GitLabUpdateProjectRequest))]
 [JsonSerializable(typeof(GitLabCreateMergeRequestRequest))]
 [JsonSerializable(typeof(GitLabUpdateMergeRequestRequest))]
 [JsonSerializable(typeof(GitLabMergeRequestMergeRequest))]

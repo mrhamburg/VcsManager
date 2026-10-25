@@ -7,6 +7,7 @@ internal sealed class DemoVcsProvider : IVcsProvider
 {
     private readonly Dictionary<RepositoryRef, VcsRepository> _repositories = [];
     private readonly Dictionary<(RepositoryRef Repository, int Number), PullRequest> _pullRequests = [];
+    private readonly HashSet<RepositoryRef> _seededRepositories = [];
     private int _nextPullRequestNumber = 1;
 
     public Task<VcsRepository> CreateRepositoryAsync(
@@ -39,6 +40,29 @@ internal sealed class DemoVcsProvider : IVcsProvider
 
         _repositories[repositoryRef] = repository;
         return Task.FromResult(repository);
+    }
+
+    public Task SeedRepositoryAsync(
+        RepositoryRef repository,
+        SeedRepositoryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(request);
+        var existing = GetRepositoryOrThrow(repository);
+
+        if (!_seededRepositories.Add(repository))
+        {
+            throw new VcsConflictException("The repository already has an initial commit.");
+        }
+
+        _repositories[repository] = existing with
+        {
+            DefaultBranch = request.Branch,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        return Task.CompletedTask;
     }
 
     public Task<VcsRepository> GetRepositoryAsync(

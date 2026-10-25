@@ -106,6 +106,7 @@ requests.
 | --- | --- |
 | List projects, get a project, get a merge request | `read_api` |
 | Create or delete a project | `api`, with the Owner or Maintainer role required by project settings |
+| Seed a project with an initial commit | `api` or `write_repository`, with at least the Developer role on the project |
 | Create, merge, or close a merge request | `api`, with at least the Developer role on the project |
 
 The token is sent in the `PRIVATE-TOKEN` header. VcsManager does not log or
@@ -147,6 +148,12 @@ provider calls the project API.
 `InitializeWithReadme`, and `DefaultBranch` to the GitLab create-project API.
 GitLab accepts `private`, `internal`, and `public` visibility; all three map
 directly.
+
+`SeedRepositoryAsync` writes one initial commit with all supplied files through
+the GitLab Commits API. The project must be empty. The seeded branch becomes the
+default branch. The token needs the `api` scope or `write_repository`. The
+provider does not preserve executable bits, symlinks, submodules, or empty
+directories.
 
 `GetRepositoryAsync`, `RepositoryExistsAsync`, and `DeleteRepositoryAsync`
 accept a namespace, an optional subgroup, and a project path.
