@@ -116,6 +116,25 @@ public sealed class GitLabPullRequestTests
     }
 
     [Fact]
+    public async Task GetPullRequest_MapsValues()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetMergeRequestAsync(
+                "test-group/test-project",
+                7,
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(iid: 7));
+
+        var pullRequest = await provider.GetPullRequestAsync(Repository(), 7);
+
+        Assert.Equal(7, pullRequest.Number);
+        Assert.Equal("Test merge request", pullRequest.Title);
+        Assert.Equal("test-user", pullRequest.Author);
+        Assert.Equal(PullRequestState.Open, pullRequest.State);
+    }
+
+    [Fact]
     public async Task GetPullRequest_Missing_ThrowsPullRequestNotFoundException()
     {
         var (provider, client) = CreateProvider();

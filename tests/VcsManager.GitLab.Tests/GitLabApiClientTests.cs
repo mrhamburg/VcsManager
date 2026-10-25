@@ -171,6 +171,20 @@ public sealed class GitLabApiClientTests
     }
 
     [Fact]
+    public async Task DeleteProject_SendsDeleteToEncodedPath()
+    {
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        await using var client = CreateClient(handler);
+
+        await client.DeleteProjectAsync("group/subgroup/project", CancellationToken.None);
+
+        Assert.Equal(
+            "/api/v4/projects/group%2Fsubgroup%2Fproject",
+            handler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal(HttpMethod.Delete, handler.LastRequest.Method);
+    }
+
+    [Fact]
     public async Task NonSuccessResponse_ThrowsGitLabApiExceptionWithRetryAfter()
     {
         var handler = new RecordingHandler(_ =>
@@ -190,6 +204,208 @@ public sealed class GitLabApiClientTests
 
         Assert.Equal(HttpStatusCode.TooManyRequests, exception.StatusCode);
         Assert.Equal(TimeSpan.FromSeconds(12), exception.RetryAfter);
+    }
+
+    [Fact]
+    public async Task CreateMergeRequest_WithDraft_AppliesDraftTitle()
+    {
+        string? body = null;
+        var handler = new RecordingHandler(request =>
+        {
+            body = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+            return JsonResponse("""
+                {
+                  "id": 5,
+                  "iid": 2,
+                  "title": "Draft: Change",
+                  "draft": true,
+                  "source_branch": "feature",
+                  "target_branch": "main",
+                  "state": "opened",
+                  "author": { "username": "user" },
+                  "web_url": "https://gitlab.test/group/project/-/merge_requests/2"
+                }
+                """);
+        });
+        await using var client = CreateClient(handler);
+
+        var mergeRequest = await client.CreateMergeRequestAsync(
+            "group/project",
+            new CreatePullRequestRequest
+            {
+                Title = "Change",
+                Description = "Description",
+                SourceBranch = "feature",
+                TargetBranch = "main",
+                Draft = true,
+            },
+            CancellationToken.None);
+
+        Assert.Equal(PullRequestState.Draft, mergeRequest.State);
+        Assert.True(mergeRequest.IsDraft);
+
+        Assert.NotNull(body);
+        using var json = JsonDocument.Parse(body);
+        Assert.Equal("Draft: Change", json.RootElement.GetProperty("title").GetString());
+        Assert.Equal("Description", json.RootElement.GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task ListMergeRequests_ForwardsFiltersAndReadsPaginationHeaders()
+    {
+        var handler = new RecordingHandler(_ => JsonResponse(
+            """
+            [
+              {
+                "id": 5,
+                "iid": 2,
+                "title": "Change",
+                "source_branch": "feature",
+                "target_branch": "main",
+                "state": "opened",
+                "author": { "username": "user" },
+                "web_url": "https://gitlab.test/group/project/-/merge_requests/2"
+              }
+            ]
+            """,
+            ("X-Total", "9"),
+            ("X-Next-Page", "2")));
+        await using var client = CreateClient(handler);
+
+        var page = await client.ListMergeRequestsAsync(
+            "group/project",
+            new PullRequestQuery
+            {
+                State = PullRequestState.Open,
+                Author = "user",
+                SourceBranch = "feature",
+                TargetBranch = "main",
+            },
+            new PaginationOptions { Page = 1, PageSize = 20 },
+            CancellationToken.None);
+
+        Assert.Single(page.Items);
+        Assert.Equal(9, page.TotalCount);
+        Assert.True(page.HasNextPage);
+
+        var query = ParseQuery(handler.LastRequest!.RequestUri!);
+        Assert.Equal("opened", query["state"]);
+        Assert.Equal("user", query["author_username"]);
+        Assert.Equal("feature", query["source_branch"]);
+        Assert.Equal("main", query["target_branch"]);
+        Assert.Equal("1", query["page"]);
+        Assert.Equal("20", query["per_page"]);
+    }
+
+    [Fact]
+    public async Task CloseMergeRequest_SendsStateEvent()
+    {
+        string? body = null;
+        var handler = new RecordingHandler(request =>
+        {
+            body = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+            return JsonResponse("""
+                {
+                  "id": 5,
+                  "iid": 2,
+                  "title": "Change",
+                  "source_branch": "feature",
+                  "target_branch": "main",
+                  "state": "closed",
+                  "closed_at": "2024-01-01T00:00:00Z",
+                  "author": { "username": "user" },
+                  "web_url": "https://gitlab.test/group/project/-/merge_requests/2"
+                }
+                """);
+        });
+        await using var client = CreateClient(handler);
+
+        var mergeRequest = await client.CloseMergeRequestAsync(
+            "group/project",
+            2,
+            CancellationToken.None);
+
+        Assert.Equal(PullRequestState.Closed, mergeRequest.State);
+
+        Assert.NotNull(body);
+        using var json = JsonDocument.Parse(body);
+        Assert.Equal("close", json.RootElement.GetProperty("state_event").GetString());
+    }
+
+    [Fact]
+    public async Task CreateProject_WithNamespacePath_ResolvesNamespaceId()
+    {
+        string? body = null;
+        var handler = new RecordingHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/namespaces/group%2Fsubgroup", StringComparison.Ordinal))
+            {
+                return JsonResponse("""{ "id": 55, "path": "subgroup", "full_path": "group/subgroup" }""");
+            }
+
+            body = new StreamReader(request.Content!.ReadAsStream()).ReadToEnd();
+            return JsonResponse("""
+                {
+                  "id": 9,
+                  "name": "project",
+                  "path": "project",
+                  "path_with_namespace": "group/subgroup/project",
+                  "web_url": "https://gitlab.test/group/subgroup/project",
+                  "visibility": "private"
+                }
+                """);
+        });
+        await using var client = CreateClient(handler);
+
+        var project = await client.CreateProjectAsync(
+            "group/subgroup",
+            new CreateRepositoryRequest { Name = "project" },
+            CancellationToken.None);
+
+        Assert.Equal("group/subgroup/project", project.PathWithNamespace);
+        Assert.Equal("/api/v4/namespaces/group%2Fsubgroup", handler.Requests[0].RequestUri!.AbsolutePath);
+
+        Assert.NotNull(body);
+        using var json = JsonDocument.Parse(body);
+        Assert.Equal(55, json.RootElement.GetProperty("namespace_id").GetInt64());
+    }
+
+    [Theory]
+    [InlineData("opened", false, null, PullRequestState.Open, false)]
+    [InlineData("opened", true, null, PullRequestState.Draft, true)]
+    [InlineData("closed", false, null, PullRequestState.Closed, false)]
+    [InlineData("merged", false, "2024-01-01T00:00:00Z", PullRequestState.Merged, false)]
+    [InlineData("locked", false, null, PullRequestState.Open, false)]
+    public async Task GetMergeRequest_MapsStates(
+        string state,
+        bool draft,
+        string? mergedAt,
+        PullRequestState expectedState,
+        bool expectedDraft)
+    {
+        var mergedAtProperty = mergedAt is null ? string.Empty : $",\"merged_at\":\"{mergedAt}\"";
+        var handler = new RecordingHandler(_ => JsonResponse($$"""
+            {
+              "id": 5,
+              "iid": 2,
+              "title": "Change",
+              "draft": {{draft.ToString().ToLowerInvariant()}},
+              "source_branch": "feature",
+              "target_branch": "main",
+              "state": "{{state}}",
+              "author": { "username": "user" },
+              "web_url": "https://gitlab.test/group/project/-/merge_requests/2"{{mergedAtProperty}}
+            }
+            """));
+        await using var client = CreateClient(handler);
+
+        var mergeRequest = await client.GetMergeRequestAsync(
+            "group/project",
+            2,
+            CancellationToken.None);
+
+        Assert.Equal(expectedState, mergeRequest.State);
+        Assert.Equal(expectedDraft, mergeRequest.IsDraft);
     }
 
     private static GitLabApiClient CreateClient(HttpMessageHandler handler)
@@ -245,11 +461,14 @@ public sealed class GitLabApiClientTests
 
         public HttpRequestMessage? LastRequest { get; private set; }
 
+        public List<HttpRequestMessage> Requests { get; } = [];
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             LastRequest = request;
+            Requests.Add(request);
             return Task.FromResult(_response(request));
         }
     }
