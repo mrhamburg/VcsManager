@@ -65,6 +65,84 @@ public class VcsProviderBuilderTests
     }
 
     [Fact]
+    public void FromEnvironment_ConfiguresProvider()
+    {
+        const string prefix = "VCSM_TEST_BUILDER_ENV";
+        Environment.SetEnvironmentVariable($"{prefix}_PROVIDER", "test");
+        Environment.SetEnvironmentVariable($"{prefix}_TEST_TOKEN", "abc");
+        Environment.SetEnvironmentVariable($"{prefix}_TEST_BASE_URL", "https://example.test");
+
+        try
+        {
+            var factory = new FakeFactory("test");
+            var builder = new VcsProviderBuilder()
+                .RegisterProvider(factory)
+                .FromEnvironment(prefix);
+
+            var provider = builder.Build();
+
+            Assert.NotNull(provider);
+            Assert.Equal("abc", factory.LastConfiguration?["token"]);
+            Assert.Equal("https://example.test", factory.LastConfiguration?["base.url"]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable($"{prefix}_PROVIDER", null);
+            Environment.SetEnvironmentVariable($"{prefix}_TEST_TOKEN", null);
+            Environment.SetEnvironmentVariable($"{prefix}_TEST_BASE_URL", null);
+        }
+    }
+
+    [Fact]
+    public void FromYaml_ConfiguresProvider()
+    {
+        var factory = new FakeFactory("test");
+        var builder = new VcsProviderBuilder()
+            .RegisterProvider(factory)
+            .FromYaml("""
+                provider:
+                  test:
+                    token: abc
+                    base:
+                      url: https://example.test
+                """);
+
+        var provider = builder.Build();
+
+        Assert.NotNull(provider);
+        Assert.Equal("abc", factory.LastConfiguration?["token"]);
+        Assert.Equal("https://example.test", factory.LastConfiguration?["base.url"]);
+    }
+
+    [Fact]
+    public void FromYamlFile_ConfiguresProvider()
+    {
+        var path = Path.GetTempFileName();
+        File.WriteAllText(path, """
+            provider:
+              test:
+                token: abc
+            """);
+
+        try
+        {
+            var factory = new FakeFactory("test");
+            var builder = new VcsProviderBuilder()
+                .RegisterProvider(factory)
+                .FromYamlFile(path);
+
+            var provider = builder.Build();
+
+            Assert.NotNull(provider);
+            Assert.Equal("abc", factory.LastConfiguration?["token"]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Build_AppliesLayersInRegistrationOrder()
     {
         var calls = new List<string>();

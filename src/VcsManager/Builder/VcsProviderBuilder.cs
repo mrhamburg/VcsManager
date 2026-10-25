@@ -44,14 +44,12 @@ public sealed class VcsProviderBuilder
     /// </summary>
     /// <param name="prefix">The environment variable prefix.</param>
     /// <returns>The same builder.</returns>
-    /// <exception cref="NotSupportedException">
-    /// Environment variable reading is not available in this version.
-    /// </exception>
+    /// <exception cref="ArgumentException"><paramref name="prefix"/> is empty or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">The provider name variable is not set.</exception>
     public VcsProviderBuilder FromEnvironment(string prefix = "VCS")
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
-        throw new NotSupportedException(
-            "Environment variable configuration is not available in this version. Configure the provider with UseProvider().");
+        _configuration = EnvironmentVariableConfigurationReader.Read(prefix);
+        return this;
     }
 
     /// <summary>
@@ -60,12 +58,12 @@ public sealed class VcsProviderBuilder
     /// <param name="path">The YAML file path.</param>
     /// <returns>The same builder.</returns>
     /// <exception cref="ArgumentException"><paramref name="path"/> is empty or whitespace.</exception>
-    /// <exception cref="NotSupportedException">YAML reading is not available in this version.</exception>
+    /// <exception cref="InvalidOperationException">The YAML content is not valid provider configuration.</exception>
     public VcsProviderBuilder FromYamlFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        throw new NotSupportedException(
-            "YAML configuration is not available in this version. Configure the provider with UseProvider().");
+        _configuration = YamlConfigurationReader.Read(File.ReadAllText(path));
+        return this;
     }
 
     /// <summary>
@@ -74,12 +72,11 @@ public sealed class VcsProviderBuilder
     /// <param name="yaml">The YAML content.</param>
     /// <returns>The same builder.</returns>
     /// <exception cref="ArgumentException"><paramref name="yaml"/> is empty or whitespace.</exception>
-    /// <exception cref="NotSupportedException">YAML reading is not available in this version.</exception>
+    /// <exception cref="InvalidOperationException">The YAML content is not valid provider configuration.</exception>
     public VcsProviderBuilder FromYaml(string yaml)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(yaml);
-        throw new NotSupportedException(
-            "YAML configuration is not available in this version. Configure the provider with UseProvider().");
+        _configuration = YamlConfigurationReader.Read(yaml);
+        return this;
     }
 
     /// <summary>

@@ -50,6 +50,31 @@ dotnet pack src/VcsManager/VcsManager.csproj -c Release
 
 The core package ID is `VcsManager.Core`.
 
+## Configuration
+
+Use `VcsProviderBuilder` with `UseProvider`, environment variables, or YAML.
+
+Environment variables use this shape:
+
+```bash
+VCS_PROVIDER=github
+VCS_GITHUB_TOKEN=<token>
+VCS_GITHUB_BASE_URL=https://github.example.com
+```
+
+`VCS_{PROVIDER}_{KEY}` maps to a setting key. Underscores after the provider
+name become dots, so `VCS_GITHUB_BASE_URL` becomes `base.url`.
+
+YAML uses one provider block:
+
+```yaml
+provider:
+  github:
+    token: <token>
+    base:
+      url: https://github.example.com
+```
+
 ## Documentation
 
 - [Architecture decision records](docs/adr/README.md)
