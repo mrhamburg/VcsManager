@@ -229,7 +229,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             CompletionOptions = new GitPullRequestCompletionOptions
             {
                 DeleteSourceBranch = request.DeleteSourceBranch,
-                MergeStrategy = MapMergeStrategy(request.Method),
+                MergeStrategy = AzureDevOpsMapper.ToMergeStrategy(request.Method),
                 SquashMerge = request.Method == MergeMethod.Squash,
                 MergeCommitMessage = BuildCommitMessage(request.CommitTitle, request.CommitMessage),
             },
@@ -373,16 +373,6 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             PullRequestState.Closed => PullRequestStatus.Abandoned,
             PullRequestState.Merged => PullRequestStatus.Completed,
             _ => PullRequestStatus.All,
-        };
-    }
-
-    private static GitPullRequestMergeStrategy MapMergeStrategy(MergeMethod method)
-    {
-        return method switch
-        {
-            MergeMethod.Squash => GitPullRequestMergeStrategy.Squash,
-            MergeMethod.Rebase => GitPullRequestMergeStrategy.Rebase,
-            _ => GitPullRequestMergeStrategy.NoFastForward,
         };
     }
 

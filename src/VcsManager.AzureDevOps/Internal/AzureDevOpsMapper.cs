@@ -10,6 +10,16 @@ internal static class AzureDevOpsMapper
         return value == default ? null : new DateTimeOffset(value, TimeSpan.Zero);
     }
 
+    public static GitPullRequestMergeStrategy ToMergeStrategy(MergeMethod method)
+    {
+        return method switch
+        {
+            MergeMethod.Squash => GitPullRequestMergeStrategy.Squash,
+            MergeMethod.Rebase => GitPullRequestMergeStrategy.Rebase,
+            _ => GitPullRequestMergeStrategy.NoFastForward,
+        };
+    }
+
     public static AzureDevOpsPullRequest FromSdkPullRequest(
         GitPullRequest pullRequest,
         string organizationUrl,

@@ -62,6 +62,17 @@ public sealed class AzureDevOpsMapperTests
         Assert.Null(mapped.ClosedAt);
     }
 
+    [Theory]
+    [InlineData(MergeMethod.Merge, GitPullRequestMergeStrategy.NoFastForward)]
+    [InlineData(MergeMethod.Squash, GitPullRequestMergeStrategy.Squash)]
+    [InlineData(MergeMethod.Rebase, GitPullRequestMergeStrategy.Rebase)]
+    public void ToMergeStrategy_MapsCoreMethod(
+        MergeMethod method,
+        GitPullRequestMergeStrategy expected)
+    {
+        Assert.Equal(expected, AzureDevOpsMapper.ToMergeStrategy(method));
+    }
+
     [Fact]
     public void ToRepository_MapsOrganizationProjectAndDefaultBranch()
     {

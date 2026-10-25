@@ -346,22 +346,145 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> MergePullRequestAsync(
+    public async Task<PullRequest> MergePullRequestAsync(
         RepositoryRef repository,
         int number,
         MergePullRequestRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+        ValidatePullRequestNumber(number);
+        request ??= new MergePullRequestRequest();
+        ValidateMergeMethod(request.Method);
+        var resolved = RepositoryRefOf(owner, project, name);
+
+        AzureDevOpsPullRequest current;
+        try
+        {
+            current = await _client.GetPullRequestAsync(project, name, number, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapPullRequest(
+                exception,
+                "MergePullRequest",
+                resolved,
+                number);
+        }
+
+        if (current.State is PullRequestState.Merged or PullRequestState.Closed)
+        {
+            throw new VcsConflictException(
+                $"Pull request #{number} in repository '{resolved.Name}' is not active.");
+        }
+
+        if (string.IsNullOrWhiteSpace(current.SourceCommitId))
+        {
+            throw new VcsConflictException(
+                $"Pull request #{number} in repository '{resolved.Name}' has no source commit to complete.");
+        }
+
+        try
+        {
+            var merged = await _client.CompletePullRequestAsync(
+                project,
+                name,
+                number,
+                current.SourceCommitId,
+                request,
+                cancellationToken);
+
+            return AzureDevOpsMapper.ToPullRequest(merged);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapMergePullRequest(
+                exception,
+                "MergePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> ClosePullRequestAsync(
+    public async Task<PullRequest> ClosePullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+        ValidatePullRequestNumber(number);
+        var resolved = RepositoryRefOf(owner, project, name);
+
+        AzureDevOpsPullRequest current;
+        try
+        {
+            current = await _client.GetPullRequestAsync(project, name, number, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
+
+        if (current.State is PullRequestState.Closed or PullRequestState.Merged)
+        {
+            return AzureDevOpsMapper.ToPullRequest(current);
+        }
+
+        try
+        {
+            var closed = await _client.AbandonPullRequestAsync(
+                project,
+                name,
+                number,
+                cancellationToken);
+
+            return AzureDevOpsMapper.ToPullRequest(closed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
@@ -470,6 +593,17 @@ public sealed class AzureDevOpsProvider : IVcsProvider
         RequireValue(request.Title, "A pull request title is required.", nameof(request));
         RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
         RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
+    }
+
+    private static void ValidateMergeMethod(MergeMethod method)
+    {
+        if (!Enum.IsDefined(method))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(method),
+                method,
+                "The merge method is not valid.");
+        }
     }
 
     private static void ValidatePullRequestNumber(int number)
