@@ -32,20 +32,67 @@ public sealed class GiteaProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> CreateRepositoryAsync(
+    public async Task<VcsRepository> CreateRepositoryAsync(
         CreateRepositoryRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        throw new NotImplementedException();
+        ValidateCreateRepositoryRequest(request);
+
+        var owner = ResolveOwner(request.Owner);
+        var name = request.Name.Trim();
+
+        try
+        {
+            var created = await _client.CreateRepositoryAsync(owner, request, cancellationToken);
+            return GiteaMapper.ToRepository(created);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapRepository(
+                exception,
+                "CreateRepository",
+                owner,
+                name);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<VcsRepository> GetRepositoryAsync(
+    public async Task<VcsRepository> GetRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, name) = ResolveRepository(repository);
+
+        try
+        {
+            return GiteaMapper.ToRepository(
+                await _client.GetRepositoryAsync(owner, name, cancellationToken));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapRepository(
+                exception,
+                "GetRepository",
+                owner,
+                name);
+        }
     }
 
     /// <inheritdoc/>
@@ -58,19 +105,73 @@ public sealed class GiteaProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task DeleteRepositoryAsync(
+    public async Task DeleteRepositoryAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.DeleteRepositoryAsync(owner, name, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GiteaExceptionMapper.MapRepository(
+                exception,
+                "DeleteRepository",
+                owner,
+                name);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<bool> RepositoryExistsAsync(
+    public async Task<bool> RepositoryExistsAsync(
         RepositoryRef repository,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, name) = ResolveRepository(repository);
+
+        try
+        {
+            await _client.GetRepositoryAsync(owner, name, cancellationToken);
+            return true;
+        }
+        catch (RepositoryNotFoundException)
+        {
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var mapped = GiteaExceptionMapper.MapRepository(
+                exception,
+                "RepositoryExists",
+                owner,
+                name);
+
+            if (mapped is RepositoryNotFoundException)
+            {
+                return false;
+            }
+
+            throw mapped;
+        }
     }
 
     /// <inheritdoc/>
