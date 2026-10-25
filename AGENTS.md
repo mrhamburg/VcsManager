@@ -80,6 +80,7 @@ rewritten.
 | [0007](docs/adr/0007-merge-method-mapping.md) | `Merge` → GitHub `merge`, GitLab merge commit, Azure DevOps `noFastForward`. `Squash` → squash. `Rebase` → rebase, conditional on GitLab project settings. |
 | [0008](docs/adr/0008-close-semantics.md) | Close never merges. Close is idempotent: closed, merged, and completed pull requests are returned unchanged. |
 | [0009](docs/adr/0009-pagination-and-errors.md) | Page defaults to 1; page size defaults to 30 and must be 1–100. `TotalCount` is nullable. Map provider errors to the core error contract and never leak secrets. |
+| [0010](docs/adr/0010-exception-contract.md) | Provider failures derive from `VcsProviderException`. Never leak provider SDK or raw HTTP exceptions. Authentication and authorization are distinct; rate limits expose `RetryAfter`. |
 
 ## Code conventions
 

@@ -15,6 +15,7 @@ supersedes it.
 | [0007](0007-merge-method-mapping.md) | Merge method mapping | Accepted |
 | [0008](0008-close-semantics.md) | Close semantics and idempotency | Accepted |
 | [0009](0009-pagination-and-errors.md) | Pagination and error mapping | Accepted |
+| [0010](0010-exception-contract.md) | Exception contract and HTTP status mapping | Accepted |
 
 See the [provider capability matrix](../providers/capability-matrix.md) for the
 supported, conditional, and unsupported operations per provider.
