@@ -36,6 +36,23 @@ internal static class GitLabExceptionMapper
             inner => new PullRequestNotFoundException(repository, iid, inner));
     }
 
+    public static Exception MapMergePullRequest(
+        Exception exception,
+        string operation,
+        RepositoryRef repository,
+        int iid)
+    {
+        if (exception is GitLabApiException { StatusCode: HttpStatusCode.MethodNotAllowed } api)
+        {
+            return new VcsConflictException(
+                $"{FormatMessage(operation, $"merge request !{iid} in repository '{FormatRepositoryName(repository)}'")}" +
+                SafeDetail(api.ResponseBody),
+                api);
+        }
+
+        return MapPullRequest(exception, operation, repository, iid);
+    }
+
     public static Exception MapOperation(Exception exception, string operation)
     {
         return Map(

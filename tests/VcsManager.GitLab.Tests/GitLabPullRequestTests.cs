@@ -255,6 +255,184 @@ public sealed class GitLabPullRequestTests
             () => provider.ListPullRequestsAsync(Repository()));
     }
 
+    [Theory]
+    [InlineData(MergeMethod.Merge)]
+    [InlineData(MergeMethod.Squash)]
+    public async Task MergePullRequest_UsesSupportedMethod(MergeMethod method)
+    {
+        var (provider, client) = CreateProvider();
+        var request = new MergePullRequestRequest { Method = method };
+
+        client.MergeMergeRequestAsync(
+                "test-group/test-project",
+                7,
+                request,
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(state: PullRequestState.Merged));
+
+        var merged = await provider.MergePullRequestAsync(Repository(), 7, request);
+
+        Assert.Equal(PullRequestState.Merged, merged.State);
+        Assert.NotNull(merged.MergedAt);
+        await client.Received(1).MergeMergeRequestAsync(
+            "test-group/test-project",
+            7,
+            request,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MergePullRequest_WithRebase_ThrowsVcsUnsupportedOperationException()
+    {
+        var (provider, client) = CreateProvider();
+
+        var exception = await Assert.ThrowsAsync<VcsUnsupportedOperationException>(
+            () => provider.MergePullRequestAsync(
+                Repository(),
+                7,
+                new MergePullRequestRequest { Method = MergeMethod.Rebase }));
+
+        Assert.Contains("rebase", exception.Message, StringComparison.OrdinalIgnoreCase);
+        await client.DidNotReceive().MergeMergeRequestAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<MergePullRequestRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MergePullRequest_ForwardsBranchDeletionAndCommitDetails()
+    {
+        var (provider, client) = CreateProvider();
+        var request = new MergePullRequestRequest
+        {
+            Method = MergeMethod.Squash,
+            DeleteSourceBranch = true,
+            CommitTitle = "Title",
+            CommitMessage = "Message",
+        };
+
+        client.MergeMergeRequestAsync(
+                "test-group/test-project",
+                7,
+                request,
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(state: PullRequestState.Merged));
+
+        await provider.MergePullRequestAsync(Repository(), 7, request);
+
+        await client.Received(1).MergeMergeRequestAsync(
+            "test-group/test-project",
+            7,
+            Arg.Is<MergePullRequestRequest>(value =>
+                value.DeleteSourceBranch &&
+                value.Method == MergeMethod.Squash &&
+                value.CommitTitle == "Title" &&
+                value.CommitMessage == "Message"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.MethodNotAllowed)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableEntity)]
+    public async Task MergePullRequest_ConflictStatus_ThrowsVcsConflictException(
+        HttpStatusCode statusCode)
+    {
+        var (provider, client) = CreateProvider();
+
+        client.MergeMergeRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Any<MergePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<GitLabMergeRequest>>(_ => throw new GitLabApiException(
+                statusCode,
+                "Branch cannot be merged",
+                retryAfter: null));
+
+        await Assert.ThrowsAsync<VcsConflictException>(
+            () => provider.MergePullRequestAsync(Repository(), 7));
+    }
+
+    [Fact]
+    public async Task MergePullRequest_Missing_ThrowsPullRequestNotFoundException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.MergeMergeRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Any<MergePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<GitLabMergeRequest>>(_ => throw new GitLabApiException(
+                HttpStatusCode.NotFound,
+                "Not Found",
+                retryAfter: null));
+
+        await Assert.ThrowsAsync<PullRequestNotFoundException>(
+            () => provider.MergePullRequestAsync(Repository(), 7));
+    }
+
+    [Fact]
+    public async Task ClosePullRequest_Open_ReturnsClosed()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetMergeRequestAsync("test-group/test-project", 7, Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(iid: 7));
+        client.CloseMergeRequestAsync("test-group/test-project", 7, Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(iid: 7, state: PullRequestState.Closed));
+
+        var closed = await provider.ClosePullRequestAsync(Repository(), 7);
+
+        Assert.Equal(PullRequestState.Closed, closed.State);
+        Assert.NotNull(closed.ClosedAt);
+        await client.Received(1).CloseMergeRequestAsync(
+            "test-group/test-project",
+            7,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(PullRequestState.Closed)]
+    [InlineData(PullRequestState.Merged)]
+    public async Task ClosePullRequest_WhenTerminal_IsIdempotent(PullRequestState state)
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetMergeRequestAsync("test-group/test-project", 7, Arg.Any<CancellationToken>())
+            .Returns(TestData.MergeRequest(iid: 7, state: state));
+
+        var first = await provider.ClosePullRequestAsync(Repository(), 7);
+        var second = await provider.ClosePullRequestAsync(Repository(), 7);
+
+        Assert.Equal(state, first.State);
+        Assert.Equal(state, second.State);
+        await client.DidNotReceive().CloseMergeRequestAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ClosePullRequest_Missing_ThrowsPullRequestNotFoundException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetMergeRequestAsync(
+                "test-group/test-project",
+                7,
+                Arg.Any<CancellationToken>())
+            .Returns<Task<GitLabMergeRequest>>(_ => throw new GitLabApiException(
+                HttpStatusCode.NotFound,
+                "Not Found",
+                retryAfter: null));
+
+        await Assert.ThrowsAsync<PullRequestNotFoundException>(
+            () => provider.ClosePullRequestAsync(Repository(), 7));
+    }
+
     private static RepositoryRef Repository()
     {
         return new RepositoryRef { Owner = "test-group", Name = "test-project" };

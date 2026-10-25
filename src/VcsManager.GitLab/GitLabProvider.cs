@@ -336,22 +336,103 @@ public sealed class GitLabProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> MergePullRequestAsync(
+    public async Task<PullRequest> MergePullRequestAsync(
         RepositoryRef repository,
         int number,
         MergePullRequestRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab merge request operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+        ValidatePullRequestNumber(number);
+        request ??= new MergePullRequestRequest();
+        ValidateMergeMethod(request.Method);
+
+        try
+        {
+            var mergeRequest = await _client.MergeMergeRequestAsync(
+                path,
+                number,
+                request,
+                cancellationToken);
+            return GitLabMapper.ToPullRequest(mergeRequest);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapMergePullRequest(
+                exception,
+                "MergePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> ClosePullRequestAsync(
+    public async Task<PullRequest> ClosePullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("The GitLab merge request operations are added by a later milestone issue.");
+        var resolved = ResolveRepository(repository);
+        var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
+        ValidatePullRequestNumber(number);
+
+        GitLabMergeRequest current;
+        try
+        {
+            current = await _client.GetMergeRequestAsync(path, number, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
+
+        if (current.State is PullRequestState.Closed or PullRequestState.Merged)
+        {
+            return GitLabMapper.ToPullRequest(current);
+        }
+
+        try
+        {
+            var closed = await _client.CloseMergeRequestAsync(path, number, cancellationToken);
+            return GitLabMapper.ToPullRequest(closed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw GitLabExceptionMapper.MapPullRequest(
+                exception,
+                "ClosePullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
@@ -407,6 +488,24 @@ public sealed class GitLabProvider : IVcsProvider
     private static void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
     {
         RequireValue(request.Name, "A repository name is required.", nameof(request));
+    }
+
+    private static void ValidateMergeMethod(MergeMethod method)
+    {
+        if (method == MergeMethod.Rebase)
+        {
+            throw new VcsUnsupportedOperationException(
+                "gitlab",
+                "MergePullRequest with MergeMethod.Rebase");
+        }
+
+        if (method is not (MergeMethod.Merge or MergeMethod.Squash))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(method),
+                method,
+                "The merge method is not valid.");
+        }
     }
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
