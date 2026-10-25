@@ -1,0 +1,10 @@
+# Fill in the token before running. The token needs the repo and delete_repo
+# scopes. Set base.url for GitHub Enterprise and default.owner to use an
+# organization instead of the authenticated user.
+provider:
+  github:
+    token: replace-with-a-github-token
+    # base:
+    #   url: https://api.github.com
+    # default:
+    #   owner: my-organization

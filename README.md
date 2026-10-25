@@ -46,6 +46,9 @@ dotnet build
 dotnet test
 ```
 
+Integration tests are a console runner with YAML configs. See
+[`tests/VcsManager.IntegrationTests/README.md`](tests/VcsManager.IntegrationTests/README.md).
+
 ## Package
 
 ```bash

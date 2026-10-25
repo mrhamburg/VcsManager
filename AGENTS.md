@@ -116,9 +116,12 @@ rewritten.
 - Test projects use xUnit, `Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio`,
   `coverlet.collector`, and NSubstitute.
 - Unit tests replace internal provider clients; they do not call real providers.
-- Integration tests use real credentials only through environment variables,
-  skip when the variables are absent, and never commit tokens or test data
-  containing secrets.
+- Integration tests use the console runner in
+  `tests/VcsManager.IntegrationTests` with YAML configs under `configs/`. They
+  read credentials from the config or CI secrets. Never commit tokens or test
+  data containing secrets. The runner never prints tokens.
+- CI runs the Gitea integration job. GitHub, GitLab, and Azure DevOps jobs are
+  present but disabled by `HAS_*_SECRETS` repository variables.
 - Cover validation, provider-to-core mapping, merge-method mapping, close
   idempotency, pagination metadata, and error mapping.
 - Do not add tests for documentation-only changes.
@@ -150,6 +153,6 @@ rewritten.
 
 - Never add tokens, credentials, private keys, authorization headers, or secret
   values to code, tests, logs, documentation, or commit messages.
-- If a test needs a credential, read it from an environment variable and skip
-  the test when it is missing.
+- Credentials come from a local integration config or CI secrets. Never commit
+  them. Unit tests must not require credentials.
 - Error messages must not include tokens or full request bodies.

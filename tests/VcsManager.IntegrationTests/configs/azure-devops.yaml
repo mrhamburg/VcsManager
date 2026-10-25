@@ -1,0 +1,11 @@
+# Fill in the values before running. The team project must already exist.
+# The token needs permissions to create and delete repositories in the project.
+provider:
+  azuredevops:
+    organization:
+      url: https://dev.azure.com/replace-with-organization
+    personal:
+      access:
+        token: replace-with-a-personal-access-token
+    default:
+      project: replace-with-a-team-project

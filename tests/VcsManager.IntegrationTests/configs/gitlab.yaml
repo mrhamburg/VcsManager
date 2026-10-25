@@ -1,0 +1,10 @@
+# Fill in the token before running. The token needs the api scope. The
+# namespace is the group that receives the test repository. Set base.url for
+# a self-hosted GitLab instance.
+provider:
+  gitlab:
+    token: replace-with-a-gitlab-token
+    # base:
+    #   url: https://gitlab.com
+    default:
+      namespace: replace-with-a-group

@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -46,7 +47,6 @@ jobs:
         dotnet test
         --no-build
         -c Release
-        --filter "FullyQualifiedName!~IntegrationTests"
         --collect:"XPlat Code Coverage"
         --results-directory ./test-results
 
@@ -60,7 +60,7 @@ jobs:
         path: ./nupkg/*.nupkg
         retention-days: 7
 
-  integration-tests:
+  integration-gitea:
     name: Integration tests (Gitea)
     runs-on: ubuntu-latest
     needs: build-and-test
@@ -83,19 +83,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v7
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        dotnet-version: '10.0.x'
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v6
-      with:
-        path: ~/.nuget/packages
-        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
-        restore-keys: |
-          nuget-${{ runner.os }}-
 
     - name: Provision Gitea test user
       id: gitea
@@ -129,10 +116,78 @@ jobs:
         echo "token=$token" >> "$GITHUB_OUTPUT"
 
     - name: Run Gitea integration tests
-      env:
-        VCS_GITEA_TEST_URL: http://localhost:3000
-        VCS_GITEA_TEST_TOKEN: ${{ steps.gitea.outputs.token }}
-      run: >-
-        dotnet test
-        tests/VcsManager.IntegrationTests/VcsManager.IntegrationTests.csproj
-        -c Release
+      uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            gitea:
+              base:
+                url: http://localhost:3000
+              token: "${{ steps.gitea.outputs.token }}"
+              default:
+                owner: ci
+
+  integration-github:
+    name: Integration tests (GitHub)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: vars.HAS_GITHUB_SECRETS == 'true'
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Run GitHub integration tests
+      uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            github:
+              token: "${{ secrets.VCS_GITHUB_TEST_TOKEN }}"
+              base:
+                url: "${{ vars.VCS_GITHUB_TEST_URL }}"
+              default:
+                owner: "${{ vars.VCS_GITHUB_TEST_OWNER }}"
+
+  integration-gitlab:
+    name: Integration tests (GitLab)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: vars.HAS_GITLAB_SECRETS == 'true'
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Run GitLab integration tests
+      uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            gitlab:
+              token: "${{ secrets.VCS_GITLAB_TEST_TOKEN }}"
+              base:
+                url: "${{ vars.VCS_GITLAB_TEST_URL }}"
+              default:
+                namespace: "${{ vars.VCS_GITLAB_TEST_NAMESPACE }}"
+
+  integration-azure-devops:
+    name: Integration tests (Azure DevOps)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: vars.HAS_AZURE_DEVOPS_SECRETS == 'true'
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Run Azure DevOps integration tests
+      uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            azuredevops:
+              organization:
+                url: "${{ secrets.VCS_AZURE_DEVOPS_ORG_URL }}"
+              personal:
+                access:
+                  token: "${{ secrets.VCS_AZURE_DEVOPS_TOKEN }}"
+              default:
+                project: "${{ vars.VCS_AZURE_DEVOPS_PROJECT }}"

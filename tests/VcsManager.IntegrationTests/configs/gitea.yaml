@@ -1,0 +1,9 @@
+# Fill in the token before running locally. The owner is optional when the
+# token user should own the test repository.
+provider:
+  gitea:
+    base:
+      url: http://localhost:3000
+    token: replace-with-a-gitea-token
+    default:
+      owner: replace-with-a-user-or-organization

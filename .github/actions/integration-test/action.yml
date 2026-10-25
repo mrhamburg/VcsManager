@@ -1,0 +1,56 @@
+name: Run integration test
+description: Publish and run the VcsManager integration runner against a configured provider
+
+inputs:
+  dotnet-version:
+    description: .NET SDK version to use
+    required: false
+    default: '10.0.x'
+  config:
+    description: YAML config content for the provider
+    required: true
+  project-path:
+    description: Path to the integration test project
+    required: false
+    default: tests/VcsManager.IntegrationTests/VcsManager.IntegrationTests.csproj
+
+runs:
+  using: composite
+
+  steps:
+  - name: Setup .NET
+    uses: actions/setup-dotnet@v6
+    with:
+      dotnet-version: ${{ inputs.dotnet-version }}
+
+  - name: Cache NuGet packages
+    uses: actions/cache@v6
+    with:
+      path: ~/.nuget/packages
+      key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+      restore-keys: |
+        nuget-${{ runner.os }}-
+
+  - name: Publish integration runner
+    shell: bash
+    run: >-
+      dotnet publish
+      "${{ inputs.project-path }}"
+      -c Release
+      -o ./integration-publish
+
+  - name: Write provider config
+    shell: bash
+    env:
+      CONFIG_CONTENT: ${{ inputs.config }}
+    run: printf '%s\n' "$CONFIG_CONTENT" > ./integration-publish/config.yaml
+
+  - name: Run integration tests
+    shell: bash
+    working-directory: ./integration-publish
+    run: ./VcsManager.IntegrationTests config.yaml
+
+  - name: Clean up
+    if: always()
+    shell: bash
+    run: rm -rf ./integration-publish
