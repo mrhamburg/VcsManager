@@ -45,7 +45,10 @@ public sealed class GiteaProvider : IVcsProvider
 
         try
         {
-            var created = await _client.CreateRepositoryAsync(owner, request, cancellationToken);
+            var created = await _client.CreateRepositoryAsync(
+                owner,
+                request with { Name = name },
+                cancellationToken);
             return GiteaMapper.ToRepository(created);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -253,7 +256,7 @@ public sealed class GiteaProvider : IVcsProvider
     {
         ArgumentNullException.ThrowIfNull(request);
         var (owner, name) = ResolveRepository(repository);
-        ValidateCreatePullRequestRequest(request);
+        request = NormalizeCreatePullRequestRequest(request);
 
         try
         {
@@ -597,11 +600,15 @@ public sealed class GiteaProvider : IVcsProvider
             repository.FullName.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
+    private static CreatePullRequestRequest NormalizeCreatePullRequestRequest(
+        CreatePullRequestRequest request)
     {
-        RequireValue(request.Title, "A pull request title is required.", nameof(request));
-        RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
-        RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
+        return request with
+        {
+            Title = RequireValue(request.Title, "A pull request title is required.", nameof(request)),
+            SourceBranch = RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
+            TargetBranch = RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
+        };
     }
 
     private static void ValidatePullRequestNumber(int number)

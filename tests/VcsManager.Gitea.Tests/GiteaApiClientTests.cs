@@ -169,10 +169,10 @@ public sealed class GiteaApiClientTests
         Assert.Equal("/api/v1/repos/test-owner/test-repository/pulls/7/merge", handler.Requests[0].AbsolutePath);
         Assert.Equal("/api/v1/repos/test-owner/test-repository/pulls/7", handler.Requests[1].AbsolutePath);
         Assert.NotNull(handler.LastBody);
-        Assert.Contains("\"do\":\"squash\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"Do\":\"squash\"", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("\"delete_branch_after_merge\":true", handler.LastBody, StringComparison.Ordinal);
-        Assert.Contains("\"merge_title_field\":\"Complete change\"", handler.LastBody, StringComparison.Ordinal);
-        Assert.Contains("\"merge_message_field\":\"Completed by VcsManager\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"MergeTitleField\":\"Complete change\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"MergeMessageField\":\"Completed by VcsManager\"", handler.LastBody, StringComparison.Ordinal);
     }
 
     [Fact]

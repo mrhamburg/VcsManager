@@ -51,12 +51,17 @@ internal sealed class GiteaEditPullRequestRequest
 
 internal sealed class GiteaMergePullRequestRequest
 {
+    // Gitea releases before 1.26 read these fields by their Go names only.
+    // Newer releases accept both the Go names and the snake_case names.
+    [JsonPropertyName("Do")]
     public required string Do { get; set; }
 
     public bool? DeleteBranchAfterMerge { get; set; }
 
+    [JsonPropertyName("MergeTitleField")]
     public string? MergeTitleField { get; set; }
 
+    [JsonPropertyName("MergeMessageField")]
     public string? MergeMessageField { get; set; }
 }
 

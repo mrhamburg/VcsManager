@@ -65,6 +65,37 @@ public sealed class GiteaPullRequestTests
         Assert.Equal(PullRequestState.Draft, pullRequest.State);
     }
 
+    [Fact]
+    public async Task CreatePullRequest_WithPaddedValues_PassesTrimmedValuesToClient()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.CreatePullRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CreatePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.PullRequest());
+
+        await provider.CreatePullRequestAsync(
+            CreateRepositoryRef(),
+            new CreatePullRequestRequest
+            {
+                Title = "  Test pull request  ",
+                SourceBranch = " feature ",
+                TargetBranch = " main ",
+            });
+
+        await client.Received(1).CreatePullRequestAsync(
+            TestData.Owner,
+            TestData.RepositoryName,
+            Arg.Is<CreatePullRequestRequest>(value =>
+                value.Title == "Test pull request" &&
+                value.SourceBranch == "feature" &&
+                value.TargetBranch == "main"),
+            Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData("", "feature", "main")]
     [InlineData("Title", "", "main")]

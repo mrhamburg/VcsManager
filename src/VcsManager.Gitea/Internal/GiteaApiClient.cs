@@ -374,7 +374,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, path);
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await ReadAsync<T>(response, cancellationToken);
     }
@@ -389,7 +392,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         {
             Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
         };
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await ReadAsync<TResponse>(response, cancellationToken);
     }
@@ -404,7 +410,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         {
             Content = JsonContent.Create(body, GetTypeInfo<TRequest>()),
         };
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
@@ -413,7 +422,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var items = await ReadAsync<List<T>>(response, cancellationToken);
@@ -428,7 +440,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var search = await ReadAsync<GiteaSearchResponse<T>>(response, cancellationToken);
@@ -441,7 +456,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     private async Task SendDeleteAsync(string path, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, path);
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await _client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 

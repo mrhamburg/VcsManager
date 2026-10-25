@@ -69,6 +69,10 @@ internal static class GiteaExceptionMapper
                 $"{message}: {timeout.Message}",
                 timeout,
                 isTransient: true),
+            OperationCanceledException canceled => new VcsProviderException(
+                $"{message}: the request timed out.",
+                canceled,
+                isTransient: true),
             JsonException json => new VcsProviderException(
                 $"{message}: the response was not valid JSON.",
                 json),

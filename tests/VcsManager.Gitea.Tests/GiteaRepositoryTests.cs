@@ -38,6 +38,26 @@ public sealed class GiteaRepositoryTests
     }
 
     [Fact]
+    public async Task CreateRepository_WithPaddedName_PassesTrimmedNameToClient()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.CreateRepositoryAsync(
+                Arg.Any<string>(),
+                Arg.Any<CreateRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.Repository());
+
+        await provider.CreateRepositoryAsync(
+            new CreateRepositoryRequest { Name = $"  {TestData.RepositoryName}  " });
+
+        await client.Received(1).CreateRepositoryAsync(
+            TestData.Owner,
+            Arg.Is<CreateRepositoryRequest>(value => value.Name == TestData.RepositoryName),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateRepository_WithDefaultOwner_UsesConfiguredOwner()
     {
         var (provider, client) = CreateProvider();
