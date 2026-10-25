@@ -62,6 +62,39 @@ public sealed class AzureDevOpsMapperTests
         Assert.Null(mapped.ClosedAt);
     }
 
+    [Fact]
+    public void FromSdkPullRequest_EscapesProjectAndRepositoryInWebUrl()
+    {
+        var pullRequest = CreateSdkPullRequest(PullRequestStatus.Active, isDraft: false);
+
+        var mapped = AzureDevOpsMapper.FromSdkPullRequest(
+            pullRequest,
+            "https://dev.azure.com/test-organization",
+            "My Project",
+            "my repo");
+
+        Assert.Equal(
+            "https://dev.azure.com/test-organization/My%20Project/_git/my%20repo/pullrequest/7",
+            mapped.WebUrl);
+    }
+
+    [Fact]
+    public void FromSdkPullRequest_WithLocalDateTime_TreatsValueAsUtc()
+    {
+        var pullRequest = CreateSdkPullRequest(PullRequestStatus.Active, isDraft: false);
+        pullRequest.CreationDate = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Local);
+
+        var mapped = AzureDevOpsMapper.FromSdkPullRequest(
+            pullRequest,
+            "https://dev.azure.com/test-organization",
+            TestData.Project,
+            "test-repository");
+
+        Assert.Equal(
+            new DateTimeOffset(2024, 1, 2, 3, 4, 5, TimeSpan.Zero),
+            mapped.CreatedAt);
+    }
+
     [Theory]
     [InlineData(MergeMethod.Merge, GitPullRequestMergeStrategy.NoFastForward)]
     [InlineData(MergeMethod.Squash, GitPullRequestMergeStrategy.Squash)]

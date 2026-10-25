@@ -1,4 +1,4 @@
-using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -171,14 +171,11 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         PaginationOptions pagination,
         CancellationToken cancellationToken)
     {
-        // The SDK repository listing uses continuation tokens, so it cannot map
-        // a page number to a skip value. REST API 7.1 provides $skip and $top.
+        // The REST API 7.1 repository listing returns all repositories and does
+        // not support $top or $skip, so the page is cut on the client.
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["api-version"] = _options.ApiVersion,
-            ["$top"] = (pagination.PageSize + 1).ToString(CultureInfo.InvariantCulture),
-            ["$skip"] = ((pagination.Page - 1) * pagination.PageSize)
-                .ToString(CultureInfo.InvariantCulture),
         };
 
         var path = string.IsNullOrWhiteSpace(project)
@@ -190,6 +187,8 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             cancellationToken);
 
         var items = response.Value
+            .Skip(GetSkip(pagination))
+            .Take(pagination.PageSize + 1)
             .Select(repository => MapRepository(repository, project))
             .ToArray();
 
@@ -265,7 +264,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
             repositoryName,
             criteria,
             maxCommentLength: null,
-            skip: (pagination.Page - 1) * pagination.PageSize,
+            skip: GetSkip(pagination),
             top: pagination.PageSize + 1,
             userState: null,
             cancellationToken: cancellationToken);
@@ -378,14 +377,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         using var request = new HttpRequestMessage(method, path);
         using var response = await _restClient.SendAsync(request, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new AzureDevOpsApiException(
-                response.StatusCode,
-                body,
-                ProviderHttp.GetRetryAfter(response));
-        }
+        await ThrowIfFailedAsync(response, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync(GetTypeInfo<T>(), cancellationToken);
 
@@ -405,14 +397,35 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         };
         using var response = await _restClient.SendAsync(request, cancellationToken);
 
+        await ThrowIfFailedAsync(response, cancellationToken);
+    }
+
+    private static async Task ThrowIfFailedAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        // An invalid or expired PAT often returns 203 with an HTML sign-in page.
+        if (response.IsSuccessStatusCode &&
+            (response.StatusCode == HttpStatusCode.NonAuthoritativeInformation ||
+                response.Content.Headers.ContentType?.MediaType == "text/html"))
+        {
+            throw new AzureDevOpsApiException(HttpStatusCode.Unauthorized, string.Empty);
+        }
+
         if (!response.IsSuccessStatusCode)
         {
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new AzureDevOpsApiException(
                 response.StatusCode,
-                responseBody,
+                body,
                 ProviderHttp.GetRetryAfter(response));
         }
+    }
+
+    private static int GetSkip(PaginationOptions pagination)
+    {
+        var skip = (long)(pagination.Page - 1) * pagination.PageSize;
+        return (int)Math.Min(skip, int.MaxValue);
     }
 
     private AzureDevOpsRepository MapRepository(GitRepository repository, string project)
@@ -464,7 +477,7 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
 
     private string BuildRepositoryWebUrl(string project, string name)
     {
-        return $"{_organizationUrl.TrimEnd('/')}/{project}/_git/{name}";
+        return $"{_organizationUrl.TrimEnd('/')}/{Uri.EscapeDataString(project)}/_git/{Uri.EscapeDataString(name)}";
     }
 
     private static JsonTypeInfo<T> GetTypeInfo<T>()

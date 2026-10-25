@@ -42,6 +42,34 @@ public sealed class AzureDevOpsPullRequestTests
     }
 
     [Fact]
+    public async Task CreatePullRequest_TrimsTitle()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.CreatePullRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CreatePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.PullRequest());
+
+        await provider.CreatePullRequestAsync(
+            CreateRepositoryRef(),
+            new CreatePullRequestRequest
+            {
+                Title = "  Test pull request  ",
+                SourceBranch = "feature",
+                TargetBranch = "main",
+            });
+
+        await client.Received(1).CreatePullRequestAsync(
+            TestData.Project,
+            "test-repository",
+            Arg.Is<CreatePullRequestRequest>(request => request.Title == "Test pull request"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreatePullRequest_AsDraft_ReturnsDraftState()
     {
         var (provider, client) = CreateProvider();

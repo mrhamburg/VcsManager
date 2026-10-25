@@ -139,7 +139,9 @@ Repository IDs are GUIDs. `VcsRepository.Id` contains the GUID string.
   repositories are reported as `VcsVisibility.Private`.
 - `TotalCount` is `null` because Azure DevOps does not report a total for this
   listing.
-- `HasNextPage` is computed by requesting one item more than `PageSize`.
+- The REST API 7.1 repository listing does not support `$top` or `$skip`. The
+  provider reads the list and cuts the requested page on the client.
+  `HasNextPage` is true when at least one more item exists after the page.
 - The provider fetches exactly one page. The caller controls paging with
   `PaginationOptions.Page` and `PaginationOptions.PageSize`.
 
@@ -231,13 +233,15 @@ returned in `PullRequestState.Merged`.
 
 | Azure DevOps response | VcsManager exception |
 | --- | --- |
-| 401 Unauthorized | `VcsAuthenticationException` |
+| 401 Unauthorized, or 203 with an HTML sign-in page (invalid or expired PAT) | `VcsAuthenticationException` |
 | 403 Forbidden | `VcsAuthorizationException` |
 | 404 Not Found | `RepositoryNotFoundException` or `PullRequestNotFoundException` |
 | 400 Bad Request on completion | `VcsConflictException` |
 | 409 Conflict | `VcsConflictException` |
 | 429 Too Many Requests | `VcsRateLimitException` with `RetryAfter` when the provider supplies it |
-| 5xx | `VcsProviderException` |
+| 5xx | `VcsProviderException` (transient) |
+| Request timeout | `VcsProviderException` (transient) |
+| Response is not valid JSON | `VcsProviderException` |
 
 ## Code sample
 

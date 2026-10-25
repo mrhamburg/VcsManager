@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.TeamFoundation;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -71,11 +72,6 @@ internal static class AzureDevOpsExceptionMapper
         Func<Exception, Exception> notFound,
         bool conflictOnBadRequest)
     {
-        if (exception is VcsProviderException)
-        {
-            return exception;
-        }
-
         var message = $"Azure DevOps {operation} failed for {target}.";
 
         return exception switch
@@ -116,6 +112,13 @@ internal static class AzureDevOpsExceptionMapper
                 $"{message} {timeout.Message}".TrimEnd(),
                 timeout,
                 isTransient: true),
+            OperationCanceledException canceled => new VcsProviderException(
+                $"{message} The request timed out.",
+                canceled,
+                isTransient: true),
+            JsonException json => new VcsProviderException(
+                $"{message} The response was not valid JSON.",
+                json),
             _ => new VcsProviderException($"{message} {exception.Message}".TrimEnd(), exception),
         };
     }

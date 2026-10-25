@@ -3,12 +3,7 @@
   <PropertyGroup>
     <PackageId>VcsManager.AzureDevOps</PackageId>
     <Description>Azure DevOps provider for VcsManager</Description>
-    <Authors>mrhamburg</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>vcs;git;azure-devops;dotnet</PackageTags>
-    <RepositoryUrl>https://github.com/mrhamburg/VcsManager</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

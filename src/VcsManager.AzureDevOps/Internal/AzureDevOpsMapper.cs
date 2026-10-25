@@ -7,7 +7,7 @@ internal static class AzureDevOpsMapper
 {
     private static DateTimeOffset? ToDateTimeOffset(DateTime value)
     {
-        return value == default ? null : new DateTimeOffset(value, TimeSpan.Zero);
+        return value == default ? null : new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
     }
 
     public static GitPullRequestMergeStrategy ToMergeStrategy(MergeMethod method)
@@ -36,7 +36,7 @@ internal static class AzureDevOpsMapper
 
         var closedAt = ToDateTimeOffset(pullRequest.ClosedDate);
         var webUrl =
-            $"{organizationUrl.TrimEnd('/')}/{project}/_git/{repositoryName}/pullrequest/{pullRequest.PullRequestId}";
+            $"{organizationUrl.TrimEnd('/')}/{Uri.EscapeDataString(project)}/_git/{Uri.EscapeDataString(repositoryName)}/pullrequest/{pullRequest.PullRequestId}";
 
         return new AzureDevOpsPullRequest
         {

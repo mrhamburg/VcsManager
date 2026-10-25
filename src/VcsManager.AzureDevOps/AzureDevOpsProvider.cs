@@ -46,7 +46,10 @@ public sealed class AzureDevOpsProvider : IVcsProvider
 
         try
         {
-            var created = await _client.CreateRepositoryAsync(project, request, cancellationToken);
+            var created = await _client.CreateRepositoryAsync(
+                project,
+                request with { Name = name },
+                cancellationToken);
             return AzureDevOpsMapper.ToRepository(created);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -262,6 +265,7 @@ public sealed class AzureDevOpsProvider : IVcsProvider
         ArgumentNullException.ThrowIfNull(request);
         var (owner, project, name) = ResolveRepository(repository);
         ValidateCreatePullRequestRequest(request);
+        request = request with { Title = request.Title.Trim() };
 
         try
         {

@@ -45,6 +45,26 @@ public sealed class AzureDevOpsRepositoryTests
     }
 
     [Fact]
+    public async Task CreateRepository_TrimsName()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.CreateRepositoryAsync(
+                Arg.Any<string>(),
+                Arg.Any<CreateRepositoryRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(TestData.Repository());
+
+        await provider.CreateRepositoryAsync(
+            new CreateRepositoryRequest { Name = "  test-repository  " });
+
+        await client.Received(1).CreateRepositoryAsync(
+            TestData.Project,
+            Arg.Is<CreateRepositoryRequest>(request => request.Name == "test-repository"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateRepository_WithDefaultProject_UsesConfiguredProject()
     {
         var (provider, client) = CreateProvider();
