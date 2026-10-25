@@ -1,9 +1,54 @@
 using System.Globalization;
+using Microsoft.TeamFoundation.SourceControl.WebApi;
 
 namespace VcsManager.AzureDevOps.Internal;
 
 internal static class AzureDevOpsMapper
 {
+    private static DateTimeOffset? ToDateTimeOffset(DateTime value)
+    {
+        return value == default ? null : new DateTimeOffset(value, TimeSpan.Zero);
+    }
+
+    public static AzureDevOpsPullRequest FromSdkPullRequest(
+        GitPullRequest pullRequest,
+        string organizationUrl,
+        string project,
+        string repositoryName)
+    {
+        var isDraft = pullRequest.IsDraft == true;
+        var state = pullRequest.Status switch
+        {
+            PullRequestStatus.Abandoned => PullRequestState.Closed,
+            PullRequestStatus.Completed => PullRequestState.Merged,
+            _ => isDraft ? PullRequestState.Draft : PullRequestState.Open,
+        };
+
+        var closedAt = ToDateTimeOffset(pullRequest.ClosedDate);
+        var webUrl =
+            $"{organizationUrl.TrimEnd('/')}/{project}/_git/{repositoryName}/pullrequest/{pullRequest.PullRequestId}";
+
+        return new AzureDevOpsPullRequest
+        {
+            Id = pullRequest.PullRequestId,
+            Number = pullRequest.PullRequestId,
+            Title = pullRequest.Title ?? string.Empty,
+            Description = pullRequest.Description,
+            SourceBranch = AzureDevOpsRefs.FromRef(pullRequest.SourceRefName),
+            TargetBranch = AzureDevOpsRefs.FromRef(pullRequest.TargetRefName),
+            State = state,
+            IsDraft = isDraft,
+            Author = pullRequest.CreatedBy?.DisplayName ??
+                pullRequest.CreatedBy?.UniqueName ??
+                string.Empty,
+            WebUrl = webUrl,
+            SourceCommitId = pullRequest.LastMergeSourceCommit?.CommitId,
+            CreatedAt = ToDateTimeOffset(pullRequest.CreationDate),
+            MergedAt = state == PullRequestState.Merged ? closedAt : null,
+            ClosedAt = state == PullRequestState.Closed ? closedAt : null,
+        };
+    }
+
     public static VcsRepository ToRepository(AzureDevOpsRepository repository)
     {
         return new VcsRepository

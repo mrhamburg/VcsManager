@@ -353,50 +353,16 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
         string project,
         string repositoryName)
     {
-        var isDraft = pullRequest.IsDraft == true;
-        var state = pullRequest.Status switch
-        {
-            PullRequestStatus.Abandoned => PullRequestState.Closed,
-            PullRequestStatus.Completed => PullRequestState.Merged,
-            _ => isDraft ? PullRequestState.Draft : PullRequestState.Open,
-        };
-
-        var closedAt = ToDateTimeOffset(pullRequest.ClosedDate);
-
-        return new AzureDevOpsPullRequest
-        {
-            Id = pullRequest.PullRequestId,
-            Number = pullRequest.PullRequestId,
-            Title = pullRequest.Title ?? string.Empty,
-            Description = pullRequest.Description,
-            SourceBranch = AzureDevOpsRefs.FromRef(pullRequest.SourceRefName),
-            TargetBranch = AzureDevOpsRefs.FromRef(pullRequest.TargetRefName),
-            State = state,
-            IsDraft = isDraft,
-            Author = pullRequest.CreatedBy?.DisplayName ??
-                pullRequest.CreatedBy?.UniqueName ??
-                string.Empty,
-            WebUrl = BuildPullRequestWebUrl(project, repositoryName, pullRequest.PullRequestId),
-            SourceCommitId = pullRequest.LastMergeSourceCommit?.CommitId,
-            CreatedAt = ToDateTimeOffset(pullRequest.CreationDate),
-            MergedAt = state == PullRequestState.Merged ? closedAt : null,
-            ClosedAt = state == PullRequestState.Closed ? closedAt : null,
-        };
+        return AzureDevOpsMapper.FromSdkPullRequest(
+            pullRequest,
+            _options.OrganizationUrl!,
+            project,
+            repositoryName);
     }
 
     private string BuildRepositoryWebUrl(string project, string name)
     {
         return $"{_options.OrganizationUrl!.TrimEnd('/')}/{project}/_git/{name}";
-    }
-
-    private string BuildPullRequestWebUrl(string project, string repositoryName, int number)
-    {
-        return $"{BuildRepositoryWebUrl(project, repositoryName)}/pullrequest/{number}";
-    }
-
-    private static DateTimeOffset? ToDateTimeOffset(DateTime value)
-    {
-        return value == default ? null : new DateTimeOffset(value, TimeSpan.Zero);
     }
 
     private static PullRequestStatus MapStatus(PullRequestState? state)

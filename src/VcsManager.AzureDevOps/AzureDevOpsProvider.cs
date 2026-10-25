@@ -220,31 +220,129 @@ public sealed class AzureDevOpsProvider : IVcsProvider
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> CreatePullRequestAsync(
+    public async Task<PullRequest> CreatePullRequestAsync(
         RepositoryRef repository,
         CreatePullRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        ArgumentNullException.ThrowIfNull(request);
+        var (owner, project, name) = ResolveRepository(repository);
+        ValidateCreatePullRequestRequest(request);
+
+        try
+        {
+            var created = await _client.CreatePullRequestAsync(
+                project,
+                name,
+                request,
+                cancellationToken);
+            return AzureDevOpsMapper.ToPullRequest(created);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "CreatePullRequest",
+                owner,
+                project,
+                name);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PullRequest> GetPullRequestAsync(
+    public async Task<PullRequest> GetPullRequestAsync(
         RepositoryRef repository,
         int number,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+        ValidatePullRequestNumber(number);
+        var resolved = RepositoryRefOf(owner, project, name);
+
+        try
+        {
+            var pullRequest = await _client.GetPullRequestAsync(
+                project,
+                name,
+                number,
+                cancellationToken);
+            return AzureDevOpsMapper.ToPullRequest(pullRequest);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapPullRequest(
+                exception,
+                "GetPullRequest",
+                resolved,
+                number);
+        }
     }
 
     /// <inheritdoc/>
-    public Task<PagedResult<PullRequest>> ListPullRequestsAsync(
+    public async Task<PagedResult<PullRequest>> ListPullRequestsAsync(
         RepositoryRef repository,
         PullRequestQuery? query = null,
         PaginationOptions? pagination = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var (owner, project, name) = ResolveRepository(repository);
+        query ??= new PullRequestQuery();
+        pagination ??= new PaginationOptions();
+
+        try
+        {
+            var page = await _client.ListPullRequestsAsync(
+                project,
+                name,
+                query,
+                pagination,
+                cancellationToken);
+
+            return new PagedResult<PullRequest>
+            {
+                Items = page.Items
+                    .Where(pullRequest => MatchesPullRequestQuery(pullRequest, query))
+                    .Select(AzureDevOpsMapper.ToPullRequest)
+                    .ToArray(),
+                Page = pagination.Page,
+                PageSize = pagination.PageSize,
+                TotalCount = page.TotalCount,
+                HasNextPage = page.HasNextPage,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (VcsProviderException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw AzureDevOpsExceptionMapper.MapRepository(
+                exception,
+                "ListPullRequests",
+                owner,
+                project,
+                name);
+        }
     }
 
     /// <inheritdoc/>
@@ -335,6 +433,36 @@ public sealed class AzureDevOpsProvider : IVcsProvider
 
         return string.IsNullOrWhiteSpace(query.NameContains) ||
             repository.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool MatchesPullRequestQuery(
+        AzureDevOpsPullRequest pullRequest,
+        PullRequestQuery query)
+    {
+        if (query.State is { } state && pullRequest.State != state)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Author) &&
+            !string.Equals(pullRequest.Author, query.Author, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.SourceBranch) &&
+            !string.Equals(pullRequest.SourceBranch, query.SourceBranch, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.TargetBranch) &&
+            !string.Equals(pullRequest.TargetBranch, query.TargetBranch, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
