@@ -80,6 +80,6 @@ Rules:
 
 ## References
 
-- GitHub REST API status codes: <https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api>
-- GitLab REST API status codes: <https://docs.gitlab.com/api/rest/#http-status-codes>
-- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
+- GitHub REST API status codes: [https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api)
+- GitLab REST API status codes: [https://docs.gitlab.com/api/rest/#http-status-codes](https://docs.gitlab.com/api/rest/#http-status-codes)
+- Azure DevOps REST API 7.1: [https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1)

@@ -52,6 +52,6 @@ Additional rules:
 
 ## References
 
-- GitHub update a pull request: <https://docs.github.com/en/rest/pulls/pulls#update-a-pull-request>
-- GitLab update a merge request: <https://docs.gitlab.com/api/merge_requests/#update-a-merge-request>
-- Azure DevOps pull request update: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1>
+- GitHub update a pull request: [https://docs.github.com/en/rest/pulls/pulls#update-a-pull-request](https://docs.github.com/en/rest/pulls/pulls#update-a-pull-request)
+- GitLab update a merge request: [https://docs.gitlab.com/api/merge_requests/#update-a-merge-request](https://docs.gitlab.com/api/merge_requests/#update-a-merge-request)
+- Azure DevOps pull request update: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1)

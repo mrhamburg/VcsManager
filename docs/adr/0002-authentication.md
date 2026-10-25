@@ -45,6 +45,6 @@ Rules:
 
 ## References
 
-- GitHub personal access tokens: <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens>
-- GitLab personal access tokens: <https://docs.gitlab.com/user/profile/personal_access_tokens/>
-- Azure DevOps personal access tokens: <https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops>
+- GitHub personal access tokens: [https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+- GitLab personal access tokens: [https://docs.gitlab.com/user/profile/personal_access_tokens/](https://docs.gitlab.com/user/profile/personal_access_tokens/)
+- Azure DevOps personal access tokens: [https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops)

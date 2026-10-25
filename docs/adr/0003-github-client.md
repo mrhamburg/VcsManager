@@ -35,7 +35,7 @@ version.
 
 ## References
 
-- Octokit 14.0.0 package: <https://www.nuget.org/packages/Octokit/14.0.0>
-- Octokit.NET source: <https://github.com/octokit/octokit.net>
-- GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
-- GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
+- Octokit 14.0.0 package: [https://www.nuget.org/packages/Octokit/14.0.0](https://www.nuget.org/packages/Octokit/14.0.0)
+- Octokit.NET source: [https://github.com/octokit/octokit.net](https://github.com/octokit/octokit.net)
+- GitHub REST API for repositories: [https://docs.github.com/en/rest/repos/repos](https://docs.github.com/en/rest/repos/repos)
+- GitHub REST API for pull requests: [https://docs.github.com/en/rest/pulls/pulls](https://docs.github.com/en/rest/pulls/pulls)

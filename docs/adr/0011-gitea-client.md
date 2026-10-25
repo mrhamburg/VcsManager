@@ -53,8 +53,8 @@ client approach requires a new ADR.
 
 ## References
 
-- Gitea API documentation: <https://docs.gitea.com/api/1.0/>
-- Gitea Swagger document: <https://gitea.com/swagger.v1.json>
-- Gitea repository endpoints: <https://docs.gitea.com/api/1.0/#tag/repository>
-- Gitea pull request endpoints: <https://docs.gitea.com/api/1.0/#tag/pull-request>
-- Gitea API usage and pagination: <https://docs.gitea.com/development/api-usage>
+- Gitea API documentation: [https://docs.gitea.com/api/1.0/](https://docs.gitea.com/api/1.0/)
+- Gitea Swagger document: [https://gitea.com/swagger.v1.json](https://gitea.com/swagger.v1.json)
+- Gitea repository endpoints: [https://docs.gitea.com/api/1.0/#tag/repository](https://docs.gitea.com/api/1.0/#tag/repository)
+- Gitea pull request endpoints: [https://docs.gitea.com/api/1.0/#tag/pull-request](https://docs.gitea.com/api/1.0/#tag/pull-request)
+- Gitea API usage and pagination: [https://docs.gitea.com/development/api-usage](https://docs.gitea.com/development/api-usage)

@@ -290,8 +290,8 @@ await using (provider)
 
 ## References
 
-- GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
-- GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
-- GitHub fine-grained personal access tokens: <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens>
-- GitHub Enterprise Server REST API: <https://docs.github.com/en/enterprise-server@latest/rest>
-- Octokit.NET: <https://github.com/octokit/octokit.net>
+- GitHub REST API for repositories: [https://docs.github.com/en/rest/repos/repos](https://docs.github.com/en/rest/repos/repos)
+- GitHub REST API for pull requests: [https://docs.github.com/en/rest/pulls/pulls](https://docs.github.com/en/rest/pulls/pulls)
+- GitHub fine-grained personal access tokens: [https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+- GitHub Enterprise Server REST API: [https://docs.github.com/en/enterprise-server@latest/rest](https://docs.github.com/en/enterprise-server@latest/rest)
+- Octokit.NET: [https://github.com/octokit/octokit.net](https://github.com/octokit/octokit.net)

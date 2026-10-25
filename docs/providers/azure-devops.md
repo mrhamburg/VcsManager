@@ -315,10 +315,10 @@ await using (provider)
 
 ## References
 
-- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
-- Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
-- Azure DevOps pull requests API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1>
-- Azure DevOps pull request update API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1>
-- Microsoft.TeamFoundationServer.Client 20.256.2: <https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2>
-- Azure DevOps personal access tokens: <https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate>
-- Azure DevOps .NET samples: <https://github.com/microsoft/azure-devops-dotnet-samples>
+- Azure DevOps REST API 7.1: [https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1)
+- Azure DevOps repositories API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1)
+- Azure DevOps pull requests API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1)
+- Azure DevOps pull request update API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1)
+- Microsoft.TeamFoundationServer.Client 20.256.2: [https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2](https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2)
+- Azure DevOps personal access tokens: [https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
+- Azure DevOps .NET samples: [https://github.com/microsoft/azure-devops-dotnet-samples](https://github.com/microsoft/azure-devops-dotnet-samples)

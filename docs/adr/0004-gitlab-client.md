@@ -38,7 +38,7 @@ The `VcsManager.GitLab` package calls the **GitLab REST API v4** directly with
 
 ## References
 
-- GitLab REST API: <https://docs.gitlab.com/api/rest/>
-- GitLab merge requests API: <https://docs.gitlab.com/api/merge_requests/>
-- GitLab projects API: <https://docs.gitlab.com/api/projects/>
-- GitLab pagination: <https://docs.gitlab.com/api/rest/#pagination>
+- GitLab REST API: [https://docs.gitlab.com/api/rest/](https://docs.gitlab.com/api/rest/)
+- GitLab merge requests API: [https://docs.gitlab.com/api/merge_requests/](https://docs.gitlab.com/api/merge_requests/)
+- GitLab projects API: [https://docs.gitlab.com/api/projects/](https://docs.gitlab.com/api/projects/)
+- GitLab pagination: [https://docs.gitlab.com/api/rest/#pagination](https://docs.gitlab.com/api/rest/#pagination)

@@ -3,7 +3,7 @@
 Unified version control system management for .NET.
 
 VcsManager provides a core abstraction package plus one package per supported
-provider, so applications can work with GitHub, GitLab, and Azure DevOps
+provider, so applications can work with GitHub, GitLab, Azure DevOps, and Gitea
 through a consistent API.
 
 ## Status
@@ -29,12 +29,14 @@ tests/
   VcsManager.Gitea.Tests/
   VcsManager.IntegrationTests/
 samples/
+docs/                      Docusaurus documentation site
 ```
 
 ## Requirements
 
 - .NET 10 SDK or later
 - Linux, macOS, or Windows
+- Node.js 20 or later for the documentation site
 
 ## Build and test
 
@@ -95,7 +97,7 @@ Environment variables use this shape:
 ```bash
 VCS_PROVIDER=github
 VCS_GITHUB_TOKEN=<token>
-VCS_GITHUB_BASE_URL=https://github.example.com
+VCS_GITHUB_BASE_URL=https://github.example.com/api/v3
 ```
 
 `VCS_{PROVIDER}_{KEY}` maps to a setting key. Underscores after the provider
@@ -108,17 +110,45 @@ provider:
   github:
     token: <token>
     base:
-      url: https://github.example.com
+      url: https://github.example.com/api/v3
 ```
 
 ## Documentation
 
-- [Architecture decision records](docs/adr/README.md)
+The documentation site is built with Docusaurus:
+
+<https://mrhamburg.github.io/VcsManager/>
+
+Run it locally:
+
+```bash
+cd docs
+npm install
+npm start
+```
+
+Build the static site:
+
+```bash
+cd docs
+npm run build
+```
+
+Source documentation:
+
+- [Introduction](docs/intro.md)
+- [Installation](docs/getting-started/installation.md)
+- [Quick start](docs/getting-started/quick-start.md)
+- [Configuration](docs/getting-started/configuration.md)
+- [Providers overview](docs/providers/overview.md)
 - [Provider capability matrix](docs/providers/capability-matrix.md)
 - [GitHub provider](docs/providers/github.md)
 - [GitLab provider](docs/providers/gitlab.md)
 - [Azure DevOps provider](docs/providers/azure-devops.md)
 - [Gitea provider](docs/providers/gitea.md)
+- [Advanced usage](docs/advanced/layers.md)
+- [API reference](docs/api-reference.md)
+- [Architecture decision records](docs/adr/README.md)
 
 ## Contributing
 

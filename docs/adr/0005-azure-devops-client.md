@@ -58,9 +58,9 @@ operations:
 
 ## References
 
-- Microsoft.TeamFoundationServer.Client 20.256.2: <https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2>
-- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
-- Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
-- Azure DevOps pull requests API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1>
-- Azure DevOps pull request update API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1>
-- Azure DevOps .NET samples: <https://github.com/microsoft/azure-devops-dotnet-samples>
+- Microsoft.TeamFoundationServer.Client 20.256.2: [https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2](https://www.nuget.org/packages/Microsoft.TeamFoundationServer.Client/20.256.2)
+- Azure DevOps REST API 7.1: [https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1)
+- Azure DevOps repositories API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1)
+- Azure DevOps pull requests API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1)
+- Azure DevOps pull request update API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1)
+- Azure DevOps .NET samples: [https://github.com/microsoft/azure-devops-dotnet-samples](https://github.com/microsoft/azure-devops-dotnet-samples)

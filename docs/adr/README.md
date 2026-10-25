@@ -1,3 +1,10 @@
+---
+id: adr-index
+title: Architecture decision records
+sidebar_label: Overview
+sidebar_position: 0
+---
+
 # Architecture decision records
 
 These short records capture decisions that later VcsManager issues depend on.

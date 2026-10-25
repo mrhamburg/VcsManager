@@ -41,6 +41,6 @@ These decisions supersede the corresponding parts of ADR-0006 and ADR-0007.
 
 ## References
 
-- GitHub repository endpoints: <https://docs.github.com/en/rest/repos/repos>
-- GitLab projects API: <https://docs.gitlab.com/api/projects/>
-- GitLab merge methods: <https://docs.gitlab.com/user/project/merge_requests/methods/>
+- GitHub repository endpoints: [https://docs.github.com/en/rest/repos/repos](https://docs.github.com/en/rest/repos/repos)
+- GitLab projects API: [https://docs.gitlab.com/api/projects/](https://docs.gitlab.com/api/projects/)
+- GitLab merge methods: [https://docs.gitlab.com/user/project/merge_requests/methods/](https://docs.gitlab.com/user/project/merge_requests/methods/)

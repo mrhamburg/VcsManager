@@ -68,6 +68,6 @@ Rules:
 
 ## References
 
-- GitHub pagination: <https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api>
-- GitLab pagination: <https://docs.gitlab.com/api/rest/#pagination>
-- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
+- GitHub pagination: [https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api](https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api)
+- GitLab pagination: [https://docs.gitlab.com/api/rest/#pagination](https://docs.gitlab.com/api/rest/#pagination)
+- Azure DevOps REST API 7.1: [https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1)

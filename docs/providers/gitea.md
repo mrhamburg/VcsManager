@@ -323,9 +323,9 @@ await using (provider)
 
 ## References
 
-- Gitea API documentation: <https://docs.gitea.com/api/1.0/>
-- Gitea API usage and authentication: <https://docs.gitea.com/development/api-usage>
-- Gitea repository API: <https://docs.gitea.com/api/1.0/#tag/repository>
-- Gitea pull request API: <https://docs.gitea.com/api/1.0/#tag/pull-request>
-- Gitea access tokens: <https://docs.gitea.com/development/oauth2-provider>
-- Gitea merge styles: <https://docs.gitea.com/usage/repositories>
+- Gitea API documentation: [https://docs.gitea.com/api/1.0/](https://docs.gitea.com/api/1.0/)
+- Gitea API usage and authentication: [https://docs.gitea.com/development/api-usage](https://docs.gitea.com/development/api-usage)
+- Gitea repository API: [https://docs.gitea.com/api/1.0/#tag/repository](https://docs.gitea.com/api/1.0/#tag/repository)
+- Gitea pull request API: [https://docs.gitea.com/api/1.0/#tag/pull-request](https://docs.gitea.com/api/1.0/#tag/pull-request)
+- Gitea access tokens: [https://docs.gitea.com/development/oauth2-provider](https://docs.gitea.com/development/oauth2-provider)
+- Gitea merge styles: [https://docs.gitea.com/usage/repositories](https://docs.gitea.com/usage/repositories)

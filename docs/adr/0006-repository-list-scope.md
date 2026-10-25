@@ -49,6 +49,6 @@ Rules:
 
 ## References
 
-- GitHub repository endpoints: <https://docs.github.com/en/rest/repos/repos>
-- GitLab projects API: <https://docs.gitlab.com/api/projects/>
-- Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
+- GitHub repository endpoints: [https://docs.github.com/en/rest/repos/repos](https://docs.github.com/en/rest/repos/repos)
+- GitLab projects API: [https://docs.gitlab.com/api/projects/](https://docs.gitlab.com/api/projects/)
+- Azure DevOps repositories API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1)

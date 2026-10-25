@@ -58,7 +58,7 @@ Conditions and limits:
 
 ## References
 
-- GitHub merge a pull request: <https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request>
-- GitLab merge methods: <https://docs.gitlab.com/user/project/merge_requests/methods/>
-- GitLab merge a merge request: <https://docs.gitlab.com/api/merge_requests/#merge-a-merge-request>
-- Azure DevOps pull request update: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1>
+- GitHub merge a pull request: [https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
+- GitLab merge methods: [https://docs.gitlab.com/user/project/merge_requests/methods/](https://docs.gitlab.com/user/project/merge_requests/methods/)
+- GitLab merge a merge request: [https://docs.gitlab.com/api/merge_requests/#merge-a-merge-request](https://docs.gitlab.com/api/merge_requests/#merge-a-merge-request)
+- Azure DevOps pull request update: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-7.1)

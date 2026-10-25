@@ -1,0 +1,293 @@
+/* Google Fonts: Inter (body) + JetBrains Mono (code) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ===== Light Mode ===== */
+:root {
+  --ifm-color-primary: #512BD4;
+  --ifm-color-primary-dark: #4726bf;
+  --ifm-color-primary-darker: #4324b4;
+  --ifm-color-primary-darkest: #371e94;
+  --ifm-color-primary-light: #6340da;
+  --ifm-color-primary-lighter: #6d4ddd;
+  --ifm-color-primary-lightest: #8a6fe5;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --ifm-code-font-size: 95%;
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.6;
+
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #f8f9fa;
+
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  --vcs-color-secondary: #00D4FF;
+}
+
+/* ===== Dark Mode ===== */
+[data-theme='dark'] {
+  --ifm-color-primary: #7f5fff;
+  --ifm-color-primary-dark: #6a43ff;
+  --ifm-color-primary-darker: #5f35ff;
+  --ifm-color-primary-darkest: #4010ff;
+  --ifm-color-primary-light: #947bff;
+  --ifm-color-primary-lighter: #9f89ff;
+  --ifm-color-primary-lightest: #c4b5ff;
+
+  --ifm-background-color: #121212;
+  --ifm-background-surface-color: #1E1E1E;
+  --ifm-navbar-background-color: #1E1E1E;
+  --ifm-footer-background-color: #1E1E1E;
+  --ifm-card-background-color: #1E1E1E;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== Typography ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+code, pre {
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
+pre {
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+[data-theme='dark'] code:not(pre code) {
+  color: var(--vcs-color-secondary);
+  background-color: rgba(0, 212, 255, 0.1);
+}
+
+/* ===== Badges ===== */
+.badge-pill {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-dotnet {
+  background: rgba(81, 43, 212, 0.2);
+  color: #512BD4;
+  border: 1px solid rgba(81, 43, 212, 0.3);
+}
+
+[data-theme='dark'] .badge-dotnet {
+  color: #7f5fff;
+  border-color: rgba(127, 95, 255, 0.3);
+}
+
+.badge-license {
+  background: rgba(16, 185, 129, 0.2);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+[data-theme='dark'] .badge-license {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.badge-version {
+  background: rgba(59, 130, 246, 0.2);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+[data-theme='dark'] .badge-version {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* ===== Hero Section ===== */
+.hero-gradient {
+  background: linear-gradient(135deg, var(--ifm-background-color) 0%, rgba(42, 27, 94, 0.15) 50%, var(--ifm-background-color) 100%);
+}
+
+[data-theme='dark'] .hero-gradient {
+  background: linear-gradient(135deg, #121212 0%, rgba(42, 27, 94, 0.7) 50%, #121212 100%);
+}
+
+/* ===== Feature Grid ===== */
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--ifm-color-emphasis-400);
+  box-shadow: 0 10px 25px -5px rgba(81, 43, 212, 0.1);
+  transform: translateY(-2px);
+}
+
+/* ===== Visual Diagram Box ===== */
+.diagram-box {
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  box-shadow: 0 25px 50px -12px rgba(81, 43, 212, 0.2);
+}
+
+[data-theme='dark'] .diagram-box {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1E1E1E;
+}
+
+/* ===== Install Box ===== */
+.install-box {
+  position: relative;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+}
+
+[data-theme='dark'] .install-box {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1E1E1E;
+}
+
+/* ===== Landing Sections ===== */
+.section-dark {
+  background: var(--ifm-background-surface-color);
+}
+
+[data-theme='dark'] .section-dark {
+  background: #0D0D0D;
+}
+
+.section-main {
+  background: var(--ifm-background-color);
+}
+
+/* ===== Custom Scrollbar (dark mode) ===== */
+[data-theme='dark'] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== Sidebar Active Accent ===== */
+.menu__link--active:not(.menu__link--sublist) {
+  border-left: 3px solid var(--ifm-color-primary);
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
+}
+
+/* ===== Navbar Tweaks ===== */
+.navbar {
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== Buttons ===== */
+.btn-primary {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--ifm-color-primary);
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--ifm-color-primary-dark);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.btn-outline {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.btn-outline:hover {
+  border-color: var(--ifm-color-emphasis-500);
+  color: var(--ifm-font-color-base);
+  text-decoration: none;
+}
+
+/* ===== Copy Button ===== */
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-font-color-base);
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-btn:hover {
+  background: var(--ifm-color-emphasis-300);
+}
+
+/* ===== Provider Selector ===== */
+.provider-selector-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.provider-selector-btn--active {
+  background: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+.provider-selector-btn--inactive {
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-font-color-base);
+}
+
+.provider-selector-btn--inactive:hover {
+  background: var(--ifm-color-emphasis-300);
+}
+
+/* ===== Footer Override ===== */
+.footer--dark {
+  background-color: #1E1E1E;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}

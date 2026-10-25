@@ -6,11 +6,11 @@ Guidance for AI coding agents working in the VcsManager repository.
 
 VcsManager is a .NET library for unified version control system management. It
 provides a core abstraction package plus one package per provider so callers can
-work with GitHub, GitLab, and Azure DevOps through the same API.
+work with GitHub, GitLab, Azure DevOps, and Gitea through the same API.
 
-The repository is in the M0 Foundation milestone. The solution, build baseline,
-and design decisions exist. Core contracts and provider implementations are
-still being added issue by issue.
+The core contracts, builder, configuration readers, operational layers, and all
+four providers are implemented. The repository uses trunk-based development and
+is pre-1.0.
 
 The repository structure and build approach follow
 [`mrhamburg/SecretsManager`](https://github.com/mrhamburg/SecretsManager).
@@ -42,9 +42,12 @@ tests/
   VcsManager.Gitea.Tests/
   VcsManager.IntegrationTests/
 samples/
-docs/
-  adr/
-  providers/
+docs/                      Docusaurus documentation site
+  adr/                     Architecture decisions (site content)
+  providers/               Provider guides (site content)
+  getting-started/         Installation, quick start, configuration
+  advanced/                Layers, custom providers, paging, merge
+  api-reference.md         Public API summary
 ```
 
 One test project exists per package. Integration tests live in
@@ -62,9 +65,17 @@ dotnet format --verify-no-changes --no-restore
 dotnet pack src/VcsManager/VcsManager.csproj -c Release
 ```
 
+Documentation site (Node.js 20 or later):
+
+```bash
+cd docs
+npm ci
+npm run build
+```
+
 Run restore, build, test, and format before pushing. For documentation-only
-changes, build and test are not strictly required, but format is cheap and
-should still pass.
+changes, build and test are not strictly required, but the documentation build
+must succeed and format is cheap and should still pass.
 
 ## Binding architecture decisions
 
@@ -84,6 +95,7 @@ rewritten.
 | [0009](docs/adr/0009-pagination-and-errors.md) | Page defaults to 1; page size defaults to 30 and must be 1–100. `TotalCount` is nullable. Map provider errors to the core error contract and never leak secrets. |
 | [0010](docs/adr/0010-exception-contract.md) | Provider failures derive from `VcsProviderException`. Never leak provider SDK or raw HTTP exceptions. Authentication and authorization are distinct; rate limits expose `RetryAfter`. |
 | [0011](docs/adr/0011-gitea-client.md) | Gitea uses REST API v1 with `HttpClient` and `System.Text.Json` behind an internal client. The page size is capped at 50. |
+| [0012](docs/adr/0012-provider-listing-and-merge-scope.md) | GitHub and GitLab list organization/group scope when `Owner` is set. GitLab rejects the `Rebase` merge method in v1. |
 
 ## Code conventions
 
@@ -117,6 +129,8 @@ rewritten.
   index in `docs/adr/README.md`.
 - Keep `docs/providers/capability-matrix.md` in sync with provider behavior.
 - Update `README.md` when commands, layout, or requirements change.
+- Keep the Docusaurus content under `docs/` in sync with provider behavior and
+  the public API.
 - Each ADR needs Context, Decision, and Consequences sections and links to the
   official provider documentation.
 

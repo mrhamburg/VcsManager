@@ -290,8 +290,8 @@ await using (provider)
 
 ## References
 
-- GitLab projects API: <https://docs.gitlab.com/api/projects/>
-- GitLab merge requests API: <https://docs.gitlab.com/api/merge_requests/>
-- GitLab merge methods: <https://docs.gitlab.com/user/project/merge_requests/methods/>
-- GitLab REST pagination: <https://docs.gitlab.com/api/rest/#pagination>
-- GitLab personal access tokens: <https://docs.gitlab.com/user/profile/personal_access_tokens/>
+- GitLab projects API: [https://docs.gitlab.com/api/projects/](https://docs.gitlab.com/api/projects/)
+- GitLab merge requests API: [https://docs.gitlab.com/api/merge_requests/](https://docs.gitlab.com/api/merge_requests/)
+- GitLab merge methods: [https://docs.gitlab.com/user/project/merge_requests/methods/](https://docs.gitlab.com/user/project/merge_requests/methods/)
+- GitLab REST pagination: [https://docs.gitlab.com/api/rest/#pagination](https://docs.gitlab.com/api/rest/#pagination)
+- GitLab personal access tokens: [https://docs.gitlab.com/user/profile/personal_access_tokens/](https://docs.gitlab.com/user/profile/personal_access_tokens/)

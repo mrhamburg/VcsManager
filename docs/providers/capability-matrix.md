@@ -122,15 +122,15 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 - [GitLab provider configuration and behavior](gitlab.md)
 - [Azure DevOps provider configuration and behavior](azure-devops.md)
 - [Gitea provider configuration and behavior](gitea.md)
-- GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
-- GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
-- GitLab REST API: <https://docs.gitlab.com/api/rest/>
-- GitLab projects API: <https://docs.gitlab.com/api/projects/>
-- GitLab merge requests API: <https://docs.gitlab.com/api/merge_requests/>
-- GitLab merge methods: <https://docs.gitlab.com/user/project/merge_requests/methods/>
-- Azure DevOps REST API 7.1: <https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1>
-- Azure DevOps repositories API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1>
-- Azure DevOps pull requests API: <https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1>
-- Gitea API documentation: <https://docs.gitea.com/api/1.0/>
-- Gitea repository API: <https://docs.gitea.com/api/1.0/#tag/repository>
-- Gitea pull request API: <https://docs.gitea.com/api/1.0/#tag/pull-request>
+- GitHub REST API for repositories: [https://docs.github.com/en/rest/repos/repos](https://docs.github.com/en/rest/repos/repos)
+- GitHub REST API for pull requests: [https://docs.github.com/en/rest/pulls/pulls](https://docs.github.com/en/rest/pulls/pulls)
+- GitLab REST API: [https://docs.gitlab.com/api/rest/](https://docs.gitlab.com/api/rest/)
+- GitLab projects API: [https://docs.gitlab.com/api/projects/](https://docs.gitlab.com/api/projects/)
+- GitLab merge requests API: [https://docs.gitlab.com/api/merge_requests/](https://docs.gitlab.com/api/merge_requests/)
+- GitLab merge methods: [https://docs.gitlab.com/user/project/merge_requests/methods/](https://docs.gitlab.com/user/project/merge_requests/methods/)
+- Azure DevOps REST API 7.1: [https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/?view=azure-devops-rest-7.1)
+- Azure DevOps repositories API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories?view=azure-devops-rest-7.1)
+- Azure DevOps pull requests API: [https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests?view=azure-devops-rest-7.1)
+- Gitea API documentation: [https://docs.gitea.com/api/1.0/](https://docs.gitea.com/api/1.0/)
+- Gitea repository API: [https://docs.gitea.com/api/1.0/#tag/repository](https://docs.gitea.com/api/1.0/#tag/repository)
+- Gitea pull request API: [https://docs.gitea.com/api/1.0/#tag/pull-request](https://docs.gitea.com/api/1.0/#tag/pull-request)

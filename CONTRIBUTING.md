@@ -54,6 +54,20 @@ Run restore, build, test, and format before you open a pull request.
   pagination, and error mapping.
 - Add a regression test for each bug fix.
 
+## Documentation site
+
+The Docusaurus site uses Node.js 20 or later:
+
+```bash
+cd docs
+npm ci
+npm run build
+```
+
+The build must succeed for documentation changes. The site reads the Markdown
+files under `docs/` directly, so update the source pages rather than a separate
+copy.
+
 ## Documentation
 
 - Record a changed design decision in a new ADR under `docs/adr/`. Accepted
