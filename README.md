@@ -8,9 +8,10 @@ through a consistent API.
 
 ## Status
 
-The repository is under active development. The current milestone provides the
-core contracts, builder, configuration readers, operational layers, tests, and
-a sample; provider implementations are not available yet.
+The repository is under active development. The core contracts, builder,
+configuration readers, operational layers, and tests are available. The GitHub
+provider is available; the GitLab and Azure DevOps providers are added in later
+milestones.
 
 ## Project layout
 
@@ -52,10 +53,9 @@ The core package ID is `VcsManager.Core`.
 
 ## Sample
 
-The sample runs the full repository and pull request flow. In this milestone it
-uses the built-in in-memory `demo` provider. Provider packages are added in
-later milestones; when one is available, register its factory and set
-`VCS_PROVIDER` to its name.
+The sample runs the full repository and pull request flow with the built-in
+in-memory `demo` provider. For the same flow against GitHub, see the
+[GitHub provider page](docs/providers/github.md).
 
 ```bash
 cd samples/VcsManager.Samples
@@ -111,6 +111,7 @@ provider:
 
 - [Architecture decision records](docs/adr/README.md)
 - [Provider capability matrix](docs/providers/capability-matrix.md)
+- [GitHub provider](docs/providers/github.md)
 
 ## Contributing
 

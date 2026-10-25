@@ -14,4 +14,13 @@
     <ProjectReference Include="..\VcsManager\VcsManager.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Octokit" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VcsManager.GitHub.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
 </Project>

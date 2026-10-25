@@ -40,7 +40,7 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 
 | Provider | Status | Notes |
 | --- | --- | --- |
-| GitHub | Supported | `Owner` is required. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. |
+| GitHub | Supported | `Owner` selects an organization; when absent, `DefaultOwner` or the authenticated user is used. `Project` is unsupported. Public, private, and (GitHub Enterprise only) internal visibility are mapped. `InitializeWithReadme` creates an initial commit. `DefaultBranch` is applied after creation when the repository already has a branch. |
 | GitLab | Supported | `Owner` is required. Nested subgroups use `Project`. Public, internal, and private visibility are mapped. `InitializeWithReadme` creates an initial commit. |
 | Azure DevOps | Conditional | `Owner` (organization) and `Project` (team project) are required, and the project must already exist. The repository is created empty; `InitializeWithReadme` is unsupported and returns a validation error. The token needs project administration rights. |
 
@@ -110,6 +110,7 @@ See [ADR-0008](../adr/0008-close-semantics.md).
 
 ## Provider documentation
 
+- [GitHub provider configuration and behavior](github.md)
 - GitHub REST API for repositories: <https://docs.github.com/en/rest/repos/repos>
 - GitHub REST API for pull requests: <https://docs.github.com/en/rest/pulls/pulls>
 - GitLab REST API: <https://docs.gitlab.com/api/rest/>
