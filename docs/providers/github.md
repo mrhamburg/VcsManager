@@ -171,10 +171,13 @@ already has a branch. An empty repository has no branch to select. `Internal`
 visibility is supported only on GitHub plans and servers that allow it; when
 GitHub rejects it, the provider throws `VcsUnsupportedOperationException`.
 
-`SeedRepositoryAsync` writes one initial commit with all supplied files through
-the GitHub Git data API. The repository must be empty. The seeded branch becomes
-the default branch. The token needs Contents write permission. The provider does
-not preserve executable bits, symlinks, submodules, or empty directories.
+`SeedRepositoryAsync` writes one initial commit with all supplied files. GitHub
+rejects the Git data API while a repository has no commits, so the provider
+creates the branch with the first file through the Contents API and then
+replaces its tip with a single root commit that contains every file. The
+repository must be empty. The seeded branch becomes the default branch. The
+token needs Contents write permission. The provider does not preserve executable
+bits, symlinks, submodules, or empty directories.
 
 `GetRepositoryAsync`, `RepositoryExistsAsync`, and `DeleteRepositoryAsync`
 accept an owner and name. `RepositoryExistsAsync` returns `false` for a missing

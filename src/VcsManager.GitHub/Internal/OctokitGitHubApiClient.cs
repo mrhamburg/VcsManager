@@ -65,6 +65,23 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         var repository = await _client.Repository.Get(owner, name);
         await EnsureEmptyRepositoryAsync(owner, name, cancellationToken);
 
+        var commitMessage = request.CommitMessage ?? "Initial commit";
+
+        // GitHub rejects the Git data API while the repository has no commits.
+        // Create the branch with the first file through the Contents API, then
+        // replace its tip with a single root commit that contains every file.
+        var firstFile = request.Files[0];
+        cancellationToken.ThrowIfCancellationRequested();
+        await _client.Repository.Content.CreateFile(
+            owner,
+            name,
+            firstFile.Path,
+            new CreateFileRequest(
+                commitMessage,
+                Convert.ToBase64String(firstFile.Content.Span),
+                request.Branch,
+                convertContentToBase64: false));
+
         var treeItems = new List<NewTreeItem>(request.Files.Count);
         foreach (var file in request.Files)
         {
@@ -99,13 +116,14 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         var commit = await _client.Git.Commit.Create(
             owner,
             name,
-            new NewCommit(request.CommitMessage ?? "Initial commit", tree.Sha));
+            new NewCommit(commitMessage, tree.Sha));
 
         cancellationToken.ThrowIfCancellationRequested();
-        await _client.Git.Reference.Create(
+        await _client.Git.Reference.Update(
             owner,
             name,
-            new NewReference($"refs/heads/{request.Branch}", commit.Sha));
+            $"heads/{request.Branch}",
+            new ReferenceUpdate(commit.Sha, force: true));
 
         if (!string.Equals(repository.DefaultBranch, request.Branch, StringComparison.Ordinal))
         {

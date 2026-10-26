@@ -51,7 +51,7 @@ See [ADR-0001](../adr/0001-repository-addressing.md) for validation rules.
 
 | Provider | Status | Notes |
 | --- | --- | --- |
-| GitHub | Supported | Writes one initial commit with all files through the Git data API. The repository must be empty. The seeded branch becomes the default branch. The token needs contents write access. |
+| GitHub | Supported | Writes one initial commit with all files. GitHub rejects the Git data API on a repository without commits, so the branch is created with the first file through the Contents API and its tip is then replaced by a single root commit that contains every file. The repository must be empty. The seeded branch becomes the default branch. The token needs contents write access. |
 | GitLab | Supported | Writes one commit with all files through the Commits API. The project must be empty. The seeded branch becomes the default branch. The token needs `api` or `write_repository`. |
 | Azure DevOps | Supported | Writes one initial commit through the Pushes API. The team project must exist and the repository must be empty. The first branch becomes the default branch. The token needs Code (Read & Write). |
 | Gitea | Supported | Writes one commit with all files through the multi-file contents API. The repository must be empty. Gitea sets the default branch on the first commit. The token needs repository write access. |
