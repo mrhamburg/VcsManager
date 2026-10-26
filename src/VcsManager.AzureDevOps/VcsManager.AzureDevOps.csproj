@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="20.256.2" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.14" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.14" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.14" />
+    <PackageReference Include="Microsoft.TeamFoundationServer.Client" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" />
+    <PackageReference Include="System.Drawing.Common" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup>
