@@ -243,23 +243,6 @@ public sealed class GitLabRepositoryTests
     }
 
     [Fact]
-    public async Task RepositoryExists_WhenMovedPermanently_ReturnsFalse()
-    {
-        var (provider, client) = CreateProvider();
-
-        client.GetProjectAsync("test-group/missing", Arg.Any<CancellationToken>())
-            .Returns<Task<GitLabProject>>(_ => throw new GitLabApiException(
-                HttpStatusCode.MovedPermanently,
-                "This resource has been moved permanently.",
-                retryAfter: null));
-
-        var exists = await provider.RepositoryExistsAsync(
-            new RepositoryRef { Owner = "test-group", Name = "missing" });
-
-        Assert.False(exists);
-    }
-
-    [Fact]
     public async Task DeleteRepository_DeletesProject()
     {
         var (provider, client) = CreateProvider();

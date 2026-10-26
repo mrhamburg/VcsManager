@@ -76,58 +76,9 @@ repository.
 
 ## GitLab
 
-The GitLab flow supports a disposable GitLab CE instance through Docker
-Compose, or an existing instance through environment variables.
-
-### Disposable GitLab CE instance
-
-Run the script. It starts GitLab CE, waits until it is ready, creates a private
-group and an access token, runs the full flow, and removes the container and
-its volumes:
-
-```bash
-tests/VcsManager.IntegrationTests/run-gitlab-integration.sh
-```
-
-The first start can take several minutes. The container uses port `8929` by
-default. Override it with `VCS_GITLAB_TEST_PORT`. The script skips cleanly when
-Docker is not installed or not running.
-
-### Existing GitLab instance
-
-Set all three variables and run the runner in GitLab mode:
-
-```bash
-export VCS_GITLAB_TEST_URL=http://localhost:8929
-export VCS_GITLAB_TEST_TOKEN=<token>
-export VCS_GITLAB_TEST_NAMESPACE=<group>
-
-dotnet run --project tests/VcsManager.IntegrationTests -- --gitlab
-```
-
-The token needs the `api` scope. The namespace must be a group, because the
-runner lists the project through the group scope. The runner prints a skip
-message and returns `0` when any variable is missing.
-
-You can also use a YAML config with `default.namespace` set to the group that
-receives the test repository. For a self-hosted instance, set `base.url` to the
-server URL.
-
-### Manual Compose control
-
-To keep the instance between runs:
-
-```bash
-VCS_GITLAB_TEST_PORT=8929 \
-  docker compose -f tests/VcsManager.IntegrationTests/docker-compose.gitlab.yml up -d
-```
-
-Provision the group and token as the script does, or create them in the GitLab
-UI. Stop and remove the instance and volumes when done:
-
-```bash
-docker compose -f tests/VcsManager.IntegrationTests/docker-compose.gitlab.yml down -v
-```
+Use a token with the `api` scope. Set `default.namespace` to the group that
+receives the test repository. For a self-hosted instance, set `base.url` to
+the server URL.
 
 ## Azure DevOps
 
