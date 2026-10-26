@@ -26,6 +26,20 @@ public sealed class GitLabExceptionMapperTests
     }
 
     [Fact]
+    public void MapRepository_MovedPermanently_MapsToRepositoryNotFoundException()
+    {
+        var exception = ApiException(HttpStatusCode.MovedPermanently);
+
+        var mapped = GitLabExceptionMapper.MapRepository(
+            exception,
+            "GetRepository",
+            Repository);
+
+        Assert.IsType<RepositoryNotFoundException>(mapped);
+        Assert.Same(exception, mapped.InnerException);
+    }
+
+    [Fact]
     public void MapPullRequest_NotFound_MapsToPullRequestNotFoundException()
     {
         var exception = ApiException(HttpStatusCode.NotFound);

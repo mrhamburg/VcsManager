@@ -116,7 +116,7 @@ internal static class GitLabExceptionMapper
             HttpStatusCode.Forbidden => exception.RetryAfter is null
                 ? new VcsAuthorizationException($"{message}{detail}", exception)
                 : new VcsRateLimitException($"{message}{detail}", exception.RetryAfter, exception),
-            HttpStatusCode.NotFound => notFound(exception),
+            HttpStatusCode.NotFound or HttpStatusCode.MovedPermanently => notFound(exception),
             HttpStatusCode.MethodNotAllowed => new VcsUnsupportedOperationException(
                 ProviderName,
                 operation,

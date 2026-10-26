@@ -9,6 +9,8 @@ internal sealed class IntegrationScenario
 
     private readonly IVcsProvider _provider;
     private readonly VcsProviderConfiguration _configuration;
+    private string? _repositoryPath;
+    private string _repositoryState = "not created";
     private int _passed;
     private int _failed;
 
@@ -38,6 +40,8 @@ internal sealed class IntegrationScenario
 
                 Assert(created.Name == repositoryName, $"Expected repository '{repositoryName}', got '{created.Name}'.");
                 Assert(created.Visibility == VcsVisibility.Private, $"Expected private visibility, got '{created.Visibility}'.");
+                _repositoryPath = created.FullName;
+                _repositoryState = "created";
             });
 
             if (created is null)
@@ -163,10 +167,12 @@ internal sealed class IntegrationScenario
 
             await RunStepAsync("Merge pull request", async () =>
             {
-                var merged = await _provider.MergePullRequestAsync(
-                    reference,
-                    mergePullRequest.Number,
-                    new MergePullRequestRequest { Method = MergeMethod.Merge });
+                var merged = await RetryOnExceptionAsync(
+                    () => _provider.MergePullRequestAsync(
+                        reference,
+                        mergePullRequest.Number,
+                        new MergePullRequestRequest { Method = MergeMethod.Merge }),
+                    result => result.State == PullRequestState.Merged);
 
                 Assert(
                     merged.State == PullRequestState.Merged,
@@ -222,6 +228,7 @@ internal sealed class IntegrationScenario
             {
                 await _provider.DeleteRepositoryAsync(reference);
                 deleted = true;
+                _repositoryState = "deleted";
             });
 
             await RunStepAsync("Repository is deleted", async () =>
@@ -240,10 +247,12 @@ internal sealed class IntegrationScenario
                 try
                 {
                     await _provider.DeleteRepositoryAsync(repository);
-                    Console.WriteLine($"Cleaned up repository: {repository.Owner}/{repository.Name}");
+                    _repositoryState = "deleted";
+                    Console.WriteLine($"Cleaned up repository: {_repositoryPath}");
                 }
                 catch (Exception exception)
                 {
+                    _repositoryState = "cleanup failed";
                     WriteError($"Cleanup failed: {exception.Message}");
                 }
             }
@@ -273,6 +282,9 @@ internal sealed class IntegrationScenario
     {
         Console.WriteLine();
         Console.WriteLine(new string('-', 50));
+        Console.WriteLine($"Repository: {_repositoryPath ?? "(none)"}");
+        Console.WriteLine($"Final state: {_repositoryState}");
+        Console.WriteLine();
 
         if (_failed == 0)
         {
@@ -282,6 +294,30 @@ internal sealed class IntegrationScenario
 
         WriteError($"{_failed} of {_passed + _failed} steps failed.");
         return 1;
+    }
+
+    private static async Task<T> RetryOnExceptionAsync<T>(Func<Task<T>> action, Func<T, bool> accept)
+    {
+        const int attempts = 10;
+        var delay = TimeSpan.FromSeconds(2);
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                var result = await action();
+                if (accept(result) || attempt >= attempts)
+                {
+                    return result;
+                }
+            }
+            catch when (attempt < attempts)
+            {
+                // The provider can reject the operation while it is still settling.
+            }
+
+            await Task.Delay(delay);
+        }
     }
 
     private static async Task<T> RetryAsync<T>(Func<Task<T>> action, Func<T, bool> accept)
