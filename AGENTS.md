@@ -120,8 +120,9 @@ rewritten.
   `tests/VcsManager.IntegrationTests` with YAML configs under `configs/`. They
   read credentials from the config or CI secrets. Never commit tokens or test
   data containing secrets. The runner never prints tokens.
-- CI runs the Gitea integration job. GitHub, GitLab, and Azure DevOps jobs are
-  present but disabled by `HAS_*_SECRETS` repository variables.
+- CI runs the Gitea integration job and the disposable GitLab CE Docker flow.
+  GitHub and Azure DevOps jobs are present but disabled by `HAS_*_SECRETS`
+  repository variables.
 - Cover validation, provider-to-core mapping, merge-method mapping, close
   idempotency, pagination metadata, and error mapping.
 - Do not add tests for documentation-only changes.

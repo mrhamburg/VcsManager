@@ -139,6 +139,6 @@ request branches.
 
 ## CI
 
-CI runs the Gitea config. GitHub, GitLab, and Azure DevOps jobs are present in
-the workflow but are off. Set the matching `HAS_*_SECRETS` repository variable
-and the provider secrets to enable one.
+CI runs the Gitea config and the disposable GitLab CE flow. GitHub and Azure
+DevOps jobs are present in the workflow but are off. Set the matching
+`HAS_*_SECRETS` repository variable and the provider secrets to enable one.

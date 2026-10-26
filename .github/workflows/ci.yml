@@ -168,24 +168,27 @@ jobs:
   integration-gitlab:
     name: Integration tests (GitLab)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     needs: build-and-test
-    if: vars.HAS_GITLAB_SECRETS == 'true'
 
     steps:
     - uses: actions/checkout@v7
 
-    - name: Run GitLab integration tests
-      uses: ./.github/actions/integration-test
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
       with:
-        config: |
-          provider:
-            gitlab:
-              token: "${{ secrets.VCS_GITLAB_TEST_TOKEN }}"
-              base:
-                url: "${{ vars.VCS_GITLAB_TEST_URL }}"
-              default:
-                namespace: "${{ vars.VCS_GITLAB_TEST_NAMESPACE }}"
+        dotnet-version: '10.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'global.json') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: Run GitLab integration tests
+      run: tests/VcsManager.IntegrationTests/run-gitlab-integration.sh
 
   integration-azure-devops:
     name: Integration tests (Azure DevOps)
