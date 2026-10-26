@@ -163,10 +163,11 @@ internal sealed class IntegrationScenario
 
             await RunStepAsync("Merge pull request", async () =>
             {
-                var merged = await _provider.MergePullRequestAsync(
-                    reference,
-                    mergePullRequest.Number,
-                    new MergePullRequestRequest { Method = MergeMethod.Merge });
+                var merged = await RetryOnConflictAsync(
+                    () => _provider.MergePullRequestAsync(
+                        reference,
+                        mergePullRequest.Number,
+                        new MergePullRequestRequest { Method = MergeMethod.Merge }));
 
                 Assert(
                     merged.State == PullRequestState.Merged,
@@ -305,6 +306,24 @@ internal sealed class IntegrationScenario
         }
 
         return result;
+    }
+
+    private static async Task<T> RetryOnConflictAsync<T>(Func<Task<T>> action)
+    {
+        const int attempts = 5;
+        var delay = TimeSpan.FromSeconds(2);
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (VcsConflictException) when (attempt < attempts)
+            {
+                await Task.Delay(delay);
+            }
+        }
     }
 
     private static void Assert(bool condition, string message)

@@ -35,6 +35,53 @@ public sealed class GitLabApiClientTests
     }
 
     [Fact]
+    public async Task GetProject_FollowsSameOriginRedirectAndMapsDeletion()
+    {
+        var handler = new RecordingHandler(request =>
+            request.RequestUri!.AbsolutePath.Contains("%2F", StringComparison.Ordinal)
+                ? RedirectResponse(
+                    HttpStatusCode.MovedPermanently,
+                    "https://gitlab.test/api/v4/projects/42")
+                : JsonResponse("""
+                    {
+                      "id": 42,
+                      "name": "Project",
+                      "path": "project",
+                      "path_with_namespace": "group/project",
+                      "web_url": "https://gitlab.test/group/project",
+                      "visibility": "private",
+                      "marked_for_deletion_at": "2026-10-26"
+                    }
+                    """));
+        await using var client = CreateClient(handler);
+
+        var project = await client.GetProjectAsync("group/project", CancellationToken.None);
+
+        Assert.True(project.IsDeleted);
+        Assert.Equal(42, project.Id);
+        Assert.Equal("group/project", project.PathWithNamespace);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(
+            "test-token",
+            handler.Requests[1].Headers.GetValues("PRIVATE-TOKEN").Single());
+    }
+
+    [Fact]
+    public async Task GetProject_DoesNotFollowCrossOriginRedirect()
+    {
+        var handler = new RecordingHandler(_ => RedirectResponse(
+            HttpStatusCode.MovedPermanently,
+            "https://other.test/api/v4/projects/42"));
+        await using var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<GitLabApiException>(
+            () => client.GetProjectAsync("group/project", CancellationToken.None));
+
+        Assert.Equal(HttpStatusCode.MovedPermanently, exception.StatusCode);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task ListProjects_ForwardsPaginationFiltersAndReadsHeaders()
     {
         var handler = new RecordingHandler(_ => JsonResponse(
@@ -623,6 +670,13 @@ public sealed class GitLabApiClientTests
             response.Headers.TryAddWithoutValidation(name, value);
         }
 
+        return response;
+    }
+
+    private static HttpResponseMessage RedirectResponse(HttpStatusCode status, string location)
+    {
+        var response = new HttpResponseMessage(status);
+        response.Headers.Location = new Uri(location);
         return response;
     }
 

@@ -171,6 +171,22 @@ public sealed class GitLabRepositoryTests
     }
 
     [Fact]
+    public async Task GetRepository_WhenMarkedForDeletion_ThrowsRepositoryNotFoundException()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetProjectAsync("test-group/test-project", Arg.Any<CancellationToken>())
+            .Returns(TestData.Project(deleted: true));
+
+        await Assert.ThrowsAsync<RepositoryNotFoundException>(
+            () => provider.GetRepositoryAsync(new RepositoryRef
+            {
+                Owner = "test-group",
+                Name = "test-project",
+            }));
+    }
+
+    [Fact]
     public async Task GetRepository_WithSubgroup_UsesEncodedPath()
     {
         var (provider, client) = CreateProvider();
@@ -238,6 +254,20 @@ public sealed class GitLabRepositoryTests
 
         var exists = await provider.RepositoryExistsAsync(
             new RepositoryRef { Owner = "test-group", Name = "missing" });
+
+        Assert.False(exists);
+    }
+
+    [Fact]
+    public async Task RepositoryExists_WhenMarkedForDeletion_ReturnsFalse()
+    {
+        var (provider, client) = CreateProvider();
+
+        client.GetProjectAsync("test-group/test-project", Arg.Any<CancellationToken>())
+            .Returns(TestData.Project(deleted: true));
+
+        var exists = await provider.RepositoryExistsAsync(
+            new RepositoryRef { Owner = "test-group", Name = "test-project" });
 
         Assert.False(exists);
     }

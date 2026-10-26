@@ -9,6 +9,7 @@ namespace VcsManager.GitLab.Internal;
 internal sealed class GitLabApiClient : IGitLabApiClient
 {
     private const string ProductName = "VcsManager";
+    private const int MaxRedirects = 3;
 
     private readonly HttpClient _client;
     private readonly bool _disposeClient;
@@ -362,10 +363,63 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         string path,
         CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(method, path);
-        using var response = await _client.SendAsync(request, cancellationToken);
-        await EnsureSuccessAsync(response, cancellationToken);
-        return await ReadAsync<T>(response, cancellationToken);
+        var currentPath = path;
+
+        for (var redirect = 0; ; redirect++)
+        {
+            using var request = new HttpRequestMessage(method, currentPath);
+            using var response = await _client.SendAsync(request, cancellationToken);
+
+            if (!TryGetSameOriginRedirect(response, out var location))
+            {
+                await EnsureSuccessAsync(response, cancellationToken);
+                return await ReadAsync<T>(response, cancellationToken);
+            }
+
+            if (redirect >= MaxRedirects)
+            {
+                throw new VcsProviderException(
+                    "GitLab returned too many redirects.");
+            }
+
+            currentPath = location;
+        }
+    }
+
+    private bool TryGetSameOriginRedirect(HttpResponseMessage response, out string location)
+    {
+        location = string.Empty;
+
+        if (response.StatusCode is not (
+            HttpStatusCode.MovedPermanently or
+            HttpStatusCode.Found or
+            HttpStatusCode.SeeOther or
+            HttpStatusCode.TemporaryRedirect or
+            HttpStatusCode.PermanentRedirect))
+        {
+            return false;
+        }
+
+        var header = response.Headers.Location;
+        if (header is null)
+        {
+            return false;
+        }
+
+        var target = header.IsAbsoluteUri
+            ? header
+            : new Uri(_client.BaseAddress!, header);
+
+        var baseAddress = _client.BaseAddress!;
+        if (!string.Equals(target.Scheme, baseAddress.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(target.Host, baseAddress.Host, StringComparison.OrdinalIgnoreCase) ||
+            target.Port != baseAddress.Port)
+        {
+            return false;
+        }
+
+        location = target.ToString();
+        return true;
     }
 
     private async Task<TResponse> SendAsync<TRequest, TResponse>(
@@ -532,6 +586,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
             Description = response.Description,
             IsArchived = response.Archived,
             IsEmpty = response.EmptyRepo,
+            IsDeleted = !string.IsNullOrWhiteSpace(response.MarkedForDeletionAt),
             CreatedAt = response.CreatedAt,
             UpdatedAt = response.UpdatedAt,
             Owner = owner,

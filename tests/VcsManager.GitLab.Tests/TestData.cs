@@ -9,7 +9,8 @@ internal static class TestData
         string? project = null,
         string name = "test-project",
         VcsVisibility visibility = VcsVisibility.Private,
-        bool archived = false)
+        bool archived = false,
+        bool deleted = false)
     {
         var segments = new[] { owner, project, name }
             .Where(segment => !string.IsNullOrWhiteSpace(segment));
@@ -26,6 +27,7 @@ internal static class TestData
             Visibility = visibility,
             Description = "Test project",
             IsArchived = archived,
+            IsDeleted = deleted,
             CreatedAt = DateTimeOffset.UnixEpoch,
             UpdatedAt = DateTimeOffset.UnixEpoch,
             Owner = owner,

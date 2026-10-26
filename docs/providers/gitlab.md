@@ -160,11 +160,16 @@ accept a namespace, an optional subgroup, and a project path.
 `RepositoryExistsAsync` returns `false` for a missing project and maps other
 failures normally.
 
+GitLab can redirect a project path after a rename or a delete. The provider
+follows redirects only when they stay on the configured GitLab host. A project
+that GitLab marks for deletion is reported as missing.
+
 > **Warning:** `DeleteRepositoryAsync` permanently deletes the project and its
 > repository, issues, merge requests, and settings. The operation cannot be
 > undone. GitLab also has delayed project deletion on some plans; a deleted
-> project can remain recoverable for a configured period. Deletion is not
-> idempotent: a second delete returns `RepositoryNotFoundException`.
+> project can remain recoverable for a configured period. VcsManager reports a
+> project marked for deletion as missing. Deletion is not idempotent: a second
+> delete can return a not-found error, and callers handle that error explicitly.
 
 ## Merge requests
 

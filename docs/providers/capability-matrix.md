@@ -65,7 +65,7 @@ not preserve executable bits, symlinks, submodules, or empty directories. See
 | Provider | Status | Notes |
 | --- | --- | --- |
 | GitHub | Supported | Requires repository administration and the `delete_repo` scope. |
-| GitLab | Supported | Requires the Owner or Maintainer role according to project settings. |
+| GitLab | Supported | Requires the Owner or Maintainer role according to project settings. A project marked for deletion is reported as not found. |
 | Azure DevOps | Supported | Requires project administration. Deletion may be disabled by organization policy. |
 | Gitea | Supported | Requires repository write access. |
 

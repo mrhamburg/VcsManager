@@ -22,6 +22,8 @@ internal sealed record GitLabProject
 
     public bool IsEmpty { get; init; }
 
+    public bool IsDeleted { get; init; }
+
     public DateTimeOffset? CreatedAt { get; init; }
 
     public DateTimeOffset? UpdatedAt { get; init; }

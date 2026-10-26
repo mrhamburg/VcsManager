@@ -93,6 +93,8 @@ internal sealed class GitLabProjectResponse
 
     public bool EmptyRepo { get; set; }
 
+    public string? MarkedForDeletionAt { get; set; }
+
     public DateTimeOffset? CreatedAt { get; set; }
 
     public DateTimeOffset? UpdatedAt { get; set; }

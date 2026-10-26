@@ -109,8 +109,16 @@ public sealed class GitLabProvider : IVcsProvider
 
         try
         {
-            return GitLabMapper.ToRepository(
-                await _client.GetProjectAsync(path, cancellationToken));
+            var project = await _client.GetProjectAsync(path, cancellationToken);
+            if (project.IsDeleted)
+            {
+                throw new RepositoryNotFoundException(
+                    resolved.Owner,
+                    resolved.Project,
+                    resolved.Name);
+            }
+
+            return GitLabMapper.ToRepository(project);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -216,8 +224,8 @@ public sealed class GitLabProvider : IVcsProvider
 
         try
         {
-            await _client.GetProjectAsync(path, cancellationToken);
-            return true;
+            var project = await _client.GetProjectAsync(path, cancellationToken);
+            return !project.IsDeleted;
         }
         catch (RepositoryNotFoundException)
         {
