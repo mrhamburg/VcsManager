@@ -5,6 +5,7 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      collapsible: false,
       label: 'Getting Started',
       items: [
         'getting-started/installation',
@@ -14,18 +15,20 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Providers',
       items: [
         'providers/overview',
-        'providers/github',
-        'providers/gitlab',
-        'providers/azure-devops',
-        'providers/gitea',
+        {type: 'doc', id: 'providers/github', className: 'vcs-side-provider vcs-side-github'},
+        {type: 'doc', id: 'providers/gitlab', className: 'vcs-side-provider vcs-side-gitlab'},
+        {type: 'doc', id: 'providers/azure-devops', className: 'vcs-side-provider vcs-side-azuredevops'},
+        {type: 'doc', id: 'providers/gitea', className: 'vcs-side-provider vcs-side-gitea'},
         'providers/capability-matrix',
       ],
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Advanced Usage',
       items: [
         'advanced/layers',
@@ -36,6 +39,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Architecture Decisions',
       items: [
         'adr/adr-index',

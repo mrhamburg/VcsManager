@@ -3,6 +3,7 @@ import Layout from '@theme/Layout';
 import HeroSection from '../components/HeroSection';
 import FeaturesSection from '../components/FeaturesSection';
 import CodeShowcase from '../components/CodeShowcase';
+import styles from '../components/landing.module.css';
 
 export default function Home(): React.JSX.Element {
   return (
@@ -10,9 +11,11 @@ export default function Home(): React.JSX.Element {
       title="Home"
       description="Unified version control management for .NET - One API for GitHub, GitLab, Azure DevOps, and Gitea"
     >
-      <HeroSection />
-      <FeaturesSection />
-      <CodeShowcase />
+      <main className={styles.page}>
+        <HeroSection />
+        <FeaturesSection />
+        <CodeShowcase />
+      </main>
     </Layout>
   );
 }

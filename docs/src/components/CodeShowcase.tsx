@@ -2,6 +2,7 @@ import React from 'react';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
+import styles from './landing.module.css';
 
 const fluentCode = `using VcsManager;
 using VcsManager.Builder;
@@ -47,14 +48,13 @@ const yamlCsharpCode = `var provider = new VcsProviderBuilder()
 
 export default function CodeShowcase(): React.JSX.Element {
   return (
-    <section className="section-main" style={{padding: '6rem 0'}}>
-      <div style={{maxWidth: '900px', margin: '0 auto', padding: '0 1.5rem'}}>
-        <div style={{textAlign: 'center', marginBottom: '3rem'}}>
-          <h2 style={{fontSize: '2.5rem', fontWeight: 700, marginBottom: '1rem'}}>
-            Configure Your Way
-          </h2>
-          <p style={{fontSize: '1.25rem', color: 'var(--ifm-color-emphasis-600)'}}>
-            Register a provider, choose a configuration source, and build
+    <section className={`${styles.section} ${styles.sectionAlt}`}>
+      <div className={styles.sectionNarrow}>
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle}>Configure your way</h2>
+          <p className={styles.sectionLede}>
+            Register a provider, choose a configuration source, and build. Every
+            source produces the same settings dictionary.
           </p>
         </div>
 
