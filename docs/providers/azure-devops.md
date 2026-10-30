@@ -6,6 +6,12 @@ for Azure DevOps Services. It uses the official
 REST API 7.1 as the fallback for operations the SDK cannot express. Callers never
 handle SDK types or HTTP response types.
 
+[![Azure DevOps integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Azure%20DevOps%29&label=azure%20devops)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml)
+
+The Azure DevOps integration test runs against a live Azure DevOps
+organization on `main`. A grey `no check runs` pill means the CI secrets are not
+configured, so the job is skipped.
+
 ## Install
 
 ```bash

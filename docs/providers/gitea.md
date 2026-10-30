@@ -4,6 +4,12 @@ The `VcsManager.Gitea` package implements the VcsManager provider contract for
 self-hosted Gitea. It uses the Gitea REST API v1 with `HttpClient` and
 `System.Text.Json`, so callers never handle HTTP response types.
 
+[![Gitea integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Gitea%29&label=gitea)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml)
+
+The Gitea integration test runs against a live Gitea instance on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is
+skipped.
+
 ## Install
 
 ```bash

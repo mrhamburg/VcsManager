@@ -4,6 +4,12 @@ The `VcsManager.GitHub` package implements the VcsManager provider contract for
 GitHub.com and GitHub Enterprise Server. It uses Octokit 14.0.0 behind an
 internal client, so callers never handle Octokit types.
 
+[![GitHub integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitHub%29&label=github)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml)
+
+The GitHub integration test runs against a live GitHub instance on `main`. A
+grey `no check runs` pill means the CI secrets are not configured, so the job is
+skipped.
+
 ## Install
 
 ```bash

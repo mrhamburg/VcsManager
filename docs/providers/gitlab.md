@@ -4,6 +4,12 @@ The `VcsManager.GitLab` package implements the VcsManager provider contract for
 GitLab.com and self-managed GitLab. It calls the GitLab REST API v4 with
 `HttpClient`, so callers never handle HTTP response types.
 
+[![GitLab integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitLab%29&label=gitlab)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml)
+
+The GitLab integration test runs against a live GitLab instance on `main`. A
+grey `no check runs` pill means the CI secrets are not configured, so the job is
+skipped.
+
 ## Install
 
 ```bash

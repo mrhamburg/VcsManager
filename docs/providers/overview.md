@@ -19,6 +19,19 @@ implement `IVcsProvider` and return the same core records and exceptions.
 | [Azure DevOps](azure-devops.md) | `VcsManager.AzureDevOps` | Personal access token | `{organization}/{project}/{name}` |
 | [Gitea](gitea.md) | `VcsManager.Gitea` | Access token | `{owner}/{name}` |
 
+## Integration test status
+
+Integration tests run each provider against a live service. The table shows the
+latest result on `main`. A grey `no check runs` pill means the provider's CI
+secrets are not configured, so the job is skipped.
+
+| Provider | Latest status on `main` |
+| --- | --- |
+| GitHub | [![GitHub integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitHub%29&label=github)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| GitLab | [![GitLab integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitLab%29&label=gitlab)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| Azure DevOps | [![Azure DevOps integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Azure%20DevOps%29&label=azure%20devops)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| Gitea | [![Gitea integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Gitea%29&label=gitea)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+
 ## Capability summary
 
 | Capability | GitHub | GitLab | Azure DevOps | Gitea |

@@ -144,7 +144,7 @@ jobs:
                 owner: ci
 
   integration-github:
-    name: Integration tests (GitHub)
+    name: Integration tests (GitHub)${{ vars.HAS_GITHUB_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build-and-test
@@ -166,7 +166,7 @@ jobs:
                 owner: "${{ vars.VCS_GITHUB_TEST_OWNER }}"
 
   integration-gitlab:
-    name: Integration tests (GitLab)
+    name: Integration tests (GitLab)${{ vars.HAS_GITLAB_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build-and-test
@@ -188,7 +188,7 @@ jobs:
                 namespace: "${{ vars.VCS_GITLAB_TEST_NAMESPACE }}"
 
   integration-azure-devops:
-    name: Integration tests (Azure DevOps)
+    name: Integration tests (Azure DevOps)${{ vars.HAS_AZURE_DEVOPS_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build-and-test
@@ -210,3 +210,48 @@ jobs:
                   token: "${{ secrets.VCS_AZURE_DEVOPS_TOKEN }}"
               default:
                 project: "${{ vars.VCS_AZURE_DEVOPS_PROJECT }}"
+
+  integration-status:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+    - integration-gitea
+    - integration-github
+    - integration-gitlab
+    - integration-azure-devops
+    if: always()
+
+    steps:
+    - name: Evaluate integration test results
+      shell: bash
+      env:
+        GITEA_RESULT: ${{ needs.integration-gitea.result }}
+        GITHUB_RESULT: ${{ needs.integration-github.result }}
+        GITLAB_RESULT: ${{ needs.integration-gitlab.result }}
+        AZURE_DEVOPS_RESULT: ${{ needs.integration-azure-devops.result }}
+      run: |
+        set -euo pipefail
+
+        printf 'Gitea: %s\n' "$GITEA_RESULT"
+        printf 'GitHub: %s\n' "$GITHUB_RESULT"
+        printf 'GitLab: %s\n' "$GITLAB_RESULT"
+        printf 'Azure DevOps: %s\n' "$AZURE_DEVOPS_RESULT"
+
+        failed=0
+        for result in \
+          "$GITEA_RESULT" \
+          "$GITHUB_RESULT" \
+          "$GITLAB_RESULT" \
+          "$AZURE_DEVOPS_RESULT"; do
+          case "$result" in
+            failure|cancelled)
+              failed=1
+              ;;
+          esac
+        done
+
+        if [ "$failed" -ne 0 ]; then
+          echo "At least one integration test job failed." >&2
+          exit 1
+        fi

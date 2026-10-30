@@ -90,6 +90,11 @@ request branches.
 
 ## CI
 
-CI runs the Gitea config. GitHub, GitLab, and Azure DevOps jobs are present in
-the workflow but are off. Set the matching `HAS_*_SECRETS` repository variable
-and the provider secrets to enable one.
+CI runs the Gitea config on every push to `main`. GitHub, GitLab, and Azure
+DevOps jobs are present in the workflow but are off. Set the matching
+`HAS_*_SECRETS` repository variable and the provider secrets to enable one.
+
+The latest status for each provider is shown in the project `README.md` and on
+each provider page. The badges read the GitHub check run for the provider's
+integration job, so a provider that is not configured shows a grey
+`no check runs` badge instead of a result.

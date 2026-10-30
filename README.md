@@ -1,5 +1,7 @@
 # VcsManager
 
+[![Integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests&label=integration)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml)
+
 Unified version control system management for .NET.
 
 VcsManager provides a core abstraction package plus one package per supported
@@ -11,6 +13,17 @@ through a consistent API.
 The repository is under active development. The core contracts, builder,
 configuration readers, operational layers, and tests are available. The GitHub,
 GitLab, Azure DevOps, and Gitea providers are available.
+
+Integration tests run each provider against a live service. The table shows the
+latest result on `main`. A grey `no check runs` pill means the provider's CI
+secrets are not configured, so the job is skipped.
+
+| Provider | Integration test config | Latest status on `main` |
+| --- | --- | --- |
+| GitHub | [`configs/github.yaml`](tests/VcsManager.IntegrationTests/configs/github.yaml) | [![GitHub integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitHub%29&label=github)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| GitLab | [`configs/gitlab.yaml`](tests/VcsManager.IntegrationTests/configs/gitlab.yaml) | [![GitLab integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28GitLab%29&label=gitlab)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| Azure DevOps | [`configs/azure-devops.yaml`](tests/VcsManager.IntegrationTests/configs/azure-devops.yaml) | [![Azure DevOps integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Azure%20DevOps%29&label=azure%20devops)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
+| Gitea | [`configs/gitea.yaml`](tests/VcsManager.IntegrationTests/configs/gitea.yaml) | [![Gitea integration tests](https://img.shields.io/github/check-runs/mrhamburg/VcsManager/main?nameFilter=Integration%20tests%20%28Gitea%29&label=gitea)](https://github.com/mrhamburg/VcsManager/actions/workflows/ci.yml) |
 
 ## Project layout
 
