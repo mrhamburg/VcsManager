@@ -63,7 +63,7 @@ public sealed partial class GitHubProvider : IVcsProvider
             GitHubExceptionMapper.IsInternalVisibilityUnsupported(exception))
         {
             throw new VcsUnsupportedOperationException(
-                "github",
+                VcsProviderNames.GitHub,
                 "CreateRepository",
                 exception);
         }
@@ -87,26 +87,14 @@ public sealed partial class GitHubProvider : IVcsProvider
         var normalized = SeedRequestValidator.Normalize(request);
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            await _client.SeedRepositoryAsync(owner, name, normalized, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.SeedRepositoryAsync(owner, name, normalized, token),
+            exception => GitHubExceptionMapper.MapRepository(
                 exception,
                 "SeedRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -116,27 +104,15 @@ public sealed partial class GitHubProvider : IVcsProvider
     {
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            return GitHubMapper.ToRepository(
-                await _client.GetRepositoryAsync(owner, name, cancellationToken));
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitHubMapper.ToRepository(
+                await _client.GetRepositoryAsync(owner, name, token)),
+            exception => GitHubExceptionMapper.MapRepository(
                 exception,
                 "GetRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -151,33 +127,24 @@ public sealed partial class GitHubProvider : IVcsProvider
 
         var owner = NormalizeOwner(query.Owner) ?? NormalizeOwner(_options.DefaultOwner);
 
-        try
-        {
-            var page = await _client.ListRepositoriesAsync(owner, query, pagination, cancellationToken);
-            return new PagedResult<VcsRepository>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(repository => MatchesRepositoryQuery(repository, query))
-                    .Select(GitHubMapper.ToRepository)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = pagination.PageSize,
-                TotalCount = null,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapOperation(exception, "ListRepositories");
-        }
+                var page = await _client.ListRepositoriesAsync(owner, query, pagination, token);
+                return new PagedResult<VcsRepository>
+                {
+                    Items = page.Items
+                        .Where(repository => MatchesRepositoryQuery(repository, query))
+                        .Select(GitHubMapper.ToRepository)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = pagination.PageSize,
+                    TotalCount = null,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GitHubExceptionMapper.MapOperation(exception, "ListRepositories"),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -187,26 +154,14 @@ public sealed partial class GitHubProvider : IVcsProvider
     {
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            await _client.DeleteRepositoryAsync(owner, name, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.DeleteRepositoryAsync(owner, name, token),
+            exception => GitHubExceptionMapper.MapRepository(
                 exception,
                 "DeleteRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -260,31 +215,15 @@ public sealed partial class GitHubProvider : IVcsProvider
         var (owner, name) = ResolveRepository(repository);
         request = NormalizeCreatePullRequestRequest(request);
 
-        try
-        {
-            var pullRequest = await _client.CreatePullRequestAsync(
-                owner,
-                name,
-                request,
-                cancellationToken);
-            return GitHubMapper.ToPullRequest(pullRequest);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitHubMapper.ToPullRequest(
+                await _client.CreatePullRequestAsync(owner, name, request, token)),
+            exception => GitHubExceptionMapper.MapRepository(
                 exception,
                 "CreatePullRequest",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -294,29 +233,17 @@ public sealed partial class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
 
-        try
-        {
-            var pullRequest = await _client.GetPullRequestAsync(owner, name, number, cancellationToken);
-            return GitHubMapper.ToPullRequest(pullRequest);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapPullRequest(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitHubMapper.ToPullRequest(
+                await _client.GetPullRequestAsync(owner, name, number, token)),
+            exception => GitHubExceptionMapper.MapPullRequest(
                 exception,
                 "GetPullRequest",
                 RepositoryOf(owner, name),
-                number);
-        }
+                number),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -330,43 +257,34 @@ public sealed partial class GitHubProvider : IVcsProvider
         query = QueryNormalization.Normalize(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
-        try
-        {
-            var page = await _client.ListPullRequestsAsync(
-                owner,
-                name,
-                query,
-                pagination,
-                cancellationToken);
-
-            return new PagedResult<PullRequest>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(pullRequest => QueryMatcher.Matches(query, pullRequest.State, pullRequest.Author, pullRequest.SourceBranch, pullRequest.TargetBranch))
-                    .Select(GitHubMapper.ToPullRequest)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = pagination.PageSize,
-                TotalCount = null,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitHubExceptionMapper.MapRepository(
+                var page = await _client.ListPullRequestsAsync(
+                    owner,
+                    name,
+                    query,
+                    pagination,
+                    token);
+
+                return new PagedResult<PullRequest>
+                {
+                    Items = page.Items
+                        .Where(pullRequest => QueryMatcher.Matches(query, pullRequest.State, pullRequest.Author, pullRequest.SourceBranch, pullRequest.TargetBranch))
+                        .Select(GitHubMapper.ToPullRequest)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = pagination.PageSize,
+                    TotalCount = null,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GitHubExceptionMapper.MapRepository(
                 exception,
                 "ListPullRequests",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -377,9 +295,9 @@ public sealed partial class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
-        ValidateMergeMethod(request.Method);
+        RequestValidation.ValidateMergeMethod(request.Method);
 
         GitHubPullRequest merged;
         try
@@ -438,7 +356,7 @@ public sealed partial class GitHubProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
 
         GitHubPullRequest current;
         try
@@ -515,14 +433,14 @@ public sealed partial class GitHubProvider : IVcsProvider
         }
 
         var name = RequirePathSegment(
-            RequireValue(repository.Name, "A repository name is required.", nameof(repository)),
+            RequestValidation.RequireValue(repository.Name, "A repository name is required.", nameof(repository)),
             "The repository name",
             nameof(repository));
         var owner = string.IsNullOrWhiteSpace(repository.Owner)
             ? _options.DefaultOwner
             : repository.Owner;
 
-        var ownerValue = RequireValue(
+        var ownerValue = RequestValidation.RequireValue(
             owner,
             "A repository owner is required for GitHub. Set RepositoryRef.Owner or GitHubOptions.DefaultOwner.",
             nameof(repository));
@@ -533,7 +451,7 @@ public sealed partial class GitHubProvider : IVcsProvider
     private static CreateRepositoryRequest NormalizeCreateRepositoryRequest(CreateRepositoryRequest request)
     {
         var name = RequirePathSegment(
-            RequireValue(request.Name, "A repository name is required.", nameof(request)),
+            RequestValidation.RequireValue(request.Name, "A repository name is required.", nameof(request)),
             "The repository name",
             nameof(request));
 
@@ -561,26 +479,10 @@ public sealed partial class GitHubProvider : IVcsProvider
     {
         return request with
         {
-            Title = RequireValue(request.Title, "A pull request title is required.", nameof(request)),
-            SourceBranch = RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
-            TargetBranch = RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
+            Title = RequestValidation.RequireValue(request.Title, "A pull request title is required.", nameof(request)),
+            SourceBranch = RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
+            TargetBranch = RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
         };
-    }
-
-    private static void ValidatePullRequestNumber(int number)
-    {
-        if (number < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(number), number, "The pull request number must be at least 1.");
-        }
-    }
-
-    private static void ValidateMergeMethod(MergeMethod method)
-    {
-        if (method is not (MergeMethod.Merge or MergeMethod.Squash or MergeMethod.Rebase))
-        {
-            throw new ArgumentOutOfRangeException(nameof(method), method, "The merge method is not valid.");
-        }
     }
 
     private static bool MatchesRepositoryQuery(GitHubRepository repository, RepositoryQuery query)
@@ -602,16 +504,6 @@ public sealed partial class GitHubProvider : IVcsProvider
     private static string? NormalizeOwner(string? owner)
     {
         return QueryNormalization.NormalizeOptional(owner);
-    }
-
-    private static string RequireValue(string? value, string message, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException(message, parameterName);
-        }
-
-        return value.Trim();
     }
 
     private static string RequirePathSegment(string value, string description, string parameterName)

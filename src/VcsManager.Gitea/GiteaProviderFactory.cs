@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.Gitea;
 
@@ -8,7 +9,7 @@ namespace VcsManager.Gitea;
 public sealed class GiteaProviderFactory : IVcsProviderFactory
 {
     /// <inheritdoc/>
-    public string ProviderName => "gitea";
+    public string ProviderName => VcsProviderNames.Gitea;
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> is <see langword="null"/>.</exception>
@@ -26,17 +27,17 @@ public sealed class GiteaProviderFactory : IVcsProviderFactory
 
         var options = new GiteaOptions();
 
-        if (TryGetValue(configuration, "token", out var token))
+        if (ProviderConfiguration.TryGetValue(configuration, "token", out var token))
         {
             options.Token = token;
         }
 
-        if (TryGetValue(configuration, "base.url", out var baseUrl))
+        if (ProviderConfiguration.TryGetValue(configuration, "base.url", out var baseUrl))
         {
             options.BaseUrl = baseUrl;
         }
 
-        if (TryGetValue(configuration, "default.owner", out var defaultOwner))
+        if (ProviderConfiguration.TryGetValue(configuration, "default.owner", out var defaultOwner))
         {
             options.DefaultOwner = defaultOwner;
         }
@@ -44,18 +45,4 @@ public sealed class GiteaProviderFactory : IVcsProviderFactory
         return options;
     }
 
-    private static bool TryGetValue(
-        IReadOnlyDictionary<string, string> configuration,
-        string key,
-        out string value)
-    {
-        if (configuration.TryGetValue(key, out var found) && !string.IsNullOrWhiteSpace(found))
-        {
-            value = found.Trim();
-            return true;
-        }
-
-        value = string.Empty;
-        return false;
-    }
 }

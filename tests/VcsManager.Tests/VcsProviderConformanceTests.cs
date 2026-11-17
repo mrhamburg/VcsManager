@@ -156,6 +156,21 @@ public abstract class VcsProviderConformanceTests
     }
 
     [Fact]
+    public async Task MergePullRequest_InvalidEnumValue_ThrowsArgumentOutOfRange()
+    {
+        await using var provider = CreateProvider();
+        var (repository, pullRequest) = await SeedRepositoryWithPullRequestAsync(
+            provider,
+            "invalid-merge");
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => provider.MergePullRequestAsync(
+                repository,
+                pullRequest.Number,
+                new MergePullRequestRequest { Method = (MergeMethod)999 }));
+    }
+
+    [Fact]
     public async Task MergePullRequest_Conflict_Throws()
     {
         await using var provider = CreateProviderWithMergeConflict();

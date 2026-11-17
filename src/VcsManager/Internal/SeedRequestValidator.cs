@@ -26,13 +26,13 @@ internal static class SeedRequestValidator
         var paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in request.Files)
         {
-            ArgumentNullException.ThrowIfNull(file);
-            ValidatePath(file.Path, nameof(request));
+            ArgumentNullException.ThrowIfNull(file, nameof(SeedRepositoryRequest.Files));
+            ValidatePath(file.Path);
             if (!paths.Add(file.Path))
             {
                 throw new ArgumentException(
                     $"The seed contains duplicate path '{file.Path}'.",
-                    nameof(request));
+                    nameof(SeedRepositoryRequest.Files));
             }
         }
 
@@ -47,13 +47,13 @@ internal static class SeedRequestValidator
         };
     }
 
-    private static void ValidatePath(string path, string parameterName)
+    private static void ValidatePath(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             throw new ArgumentException(
                 "A seed file path is required.",
-                parameterName);
+                nameof(SeedRepositoryRequest.Files));
         }
 
         if (path[0] == '/' ||
@@ -62,7 +62,7 @@ internal static class SeedRequestValidator
         {
             throw new ArgumentException(
                 $"The seed file path '{path}' must be relative and use forward slashes.",
-                parameterName);
+                nameof(SeedRepositoryRequest.Files));
         }
 
         var segments = path.Split('/');
@@ -74,14 +74,14 @@ internal static class SeedRequestValidator
             {
                 throw new ArgumentException(
                     $"The seed file path '{path}' contains an invalid segment.",
-                    parameterName);
+                    nameof(SeedRepositoryRequest.Files));
             }
 
             if (segment.Equals(".git", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException(
                     $"The seed file path '{path}' must not contain a .git segment.",
-                    parameterName);
+                    nameof(SeedRepositoryRequest.Files));
             }
         }
     }

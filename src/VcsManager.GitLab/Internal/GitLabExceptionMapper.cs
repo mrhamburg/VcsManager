@@ -1,12 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using VcsManager.Internal;
 
 namespace VcsManager.GitLab.Internal;
 
 internal static class GitLabExceptionMapper
 {
-    private const string ProviderName = "gitlab";
-
     public static Exception MapRepository(
         Exception exception,
         string operation,
@@ -45,8 +44,7 @@ internal static class GitLabExceptionMapper
         if (exception is GitLabApiException { StatusCode: HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotAcceptable } api)
         {
             return new VcsConflictException(
-                $"{FormatMessage(operation, $"merge request !{iid} in repository '{FormatRepositoryName(repository)}'")}" +
-                SafeDetail(api.ResponseBody),
+                FormatMessage(operation, $"merge request !{iid} in repository '{FormatRepositoryName(repository)}'"),
                 api);
         }
 
@@ -106,47 +104,33 @@ internal static class GitLabExceptionMapper
         string message,
         Func<Exception, Exception> notFound)
     {
-        var detail = SafeDetail(exception.ResponseBody);
-
         return exception.StatusCode switch
         {
-            HttpStatusCode.Unauthorized => new VcsAuthenticationException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Unauthorized => new VcsAuthenticationException(message, exception),
             HttpStatusCode.Forbidden => exception.RetryAfter is null
-                ? new VcsAuthorizationException($"{message}{detail}", exception)
-                : new VcsRateLimitException($"{message}{detail}", exception.RetryAfter, exception),
+                ? new VcsAuthorizationException(message, exception)
+                : new VcsRateLimitException(message, exception.RetryAfter, exception),
             HttpStatusCode.NotFound => notFound(exception),
             HttpStatusCode.MethodNotAllowed => new VcsUnsupportedOperationException(
-                ProviderName,
+                VcsProviderNames.GitLab,
                 operation,
                 exception),
-            HttpStatusCode.Conflict => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
-            HttpStatusCode.UnprocessableEntity => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
-            HttpStatusCode.NotAcceptable => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Conflict => new VcsConflictException(message, exception),
+            HttpStatusCode.UnprocessableEntity => new VcsConflictException(message, exception),
+            HttpStatusCode.NotAcceptable => new VcsConflictException(message, exception),
             HttpStatusCode.TooManyRequests => new VcsRateLimitException(
-                $"{message}{detail}",
+                message,
                 exception.RetryAfter,
                 exception),
             HttpStatusCode.BadRequest when IsConflict(exception.ResponseBody) => new VcsConflictException(
-                $"{message}{detail}",
+                message,
                 exception),
-            HttpStatusCode.BadRequest => new VcsProviderException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.BadRequest => new VcsProviderException(message, exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
-                $"{message}{detail}",
+                message,
                 exception,
                 isTransient: true),
-            _ => new VcsProviderException(
-                $"{message}{detail}",
-                exception),
+            _ => new VcsProviderException(message, exception),
         };
     }
 
@@ -154,23 +138,6 @@ internal static class GitLabExceptionMapper
     {
         return responseBody.Contains("already been taken", StringComparison.OrdinalIgnoreCase) ||
             responseBody.Contains("already exists", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string SafeDetail(string responseBody)
-    {
-        if (string.IsNullOrWhiteSpace(responseBody))
-        {
-            return string.Empty;
-        }
-
-        var detail = responseBody.Trim().ReplaceLineEndings(" ");
-        const int maxLength = 300;
-        if (detail.Length > maxLength)
-        {
-            detail = detail[..maxLength];
-        }
-
-        return $": {detail}";
     }
 
     private static string FormatMessage(string operation, string target)

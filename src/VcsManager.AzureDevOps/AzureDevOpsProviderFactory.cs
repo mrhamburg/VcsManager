@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.AzureDevOps;
 
@@ -8,7 +9,7 @@ namespace VcsManager.AzureDevOps;
 public sealed class AzureDevOpsProviderFactory : IVcsProviderFactory
 {
     /// <inheritdoc/>
-    public string ProviderName => "azuredevops";
+    public string ProviderName => VcsProviderNames.AzureDevOps;
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> is <see langword="null"/>.</exception>
@@ -26,22 +27,22 @@ public sealed class AzureDevOpsProviderFactory : IVcsProviderFactory
 
         var options = new AzureDevOpsOptions();
 
-        if (TryGetValue(configuration, "organization.url", out var organizationUrl))
+        if (ProviderConfiguration.TryGetValue(configuration, "organization.url", out var organizationUrl))
         {
             options.OrganizationUrl = organizationUrl;
         }
 
-        if (TryGetValue(configuration, "personal.access.token", out var token))
+        if (ProviderConfiguration.TryGetValue(configuration, "personal.access.token", out var token))
         {
             options.PersonalAccessToken = token;
         }
 
-        if (TryGetValue(configuration, "default.project", out var defaultProject))
+        if (ProviderConfiguration.TryGetValue(configuration, "default.project", out var defaultProject))
         {
             options.DefaultProject = defaultProject;
         }
 
-        if (TryGetValue(configuration, "api.version", out var apiVersion))
+        if (ProviderConfiguration.TryGetValue(configuration, "api.version", out var apiVersion))
         {
             options.ApiVersion = apiVersion;
         }
@@ -49,18 +50,4 @@ public sealed class AzureDevOpsProviderFactory : IVcsProviderFactory
         return options;
     }
 
-    private static bool TryGetValue(
-        IReadOnlyDictionary<string, string> configuration,
-        string key,
-        out string value)
-    {
-        if (configuration.TryGetValue(key, out var found) && !string.IsNullOrWhiteSpace(found))
-        {
-            value = found.Trim();
-            return true;
-        }
-
-        value = string.Empty;
-        return false;
-    }
 }

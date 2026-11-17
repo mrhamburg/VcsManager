@@ -1,12 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using VcsManager.Internal;
 
 namespace VcsManager.Gitea.Internal;
 
 internal static class GiteaExceptionMapper
 {
-    private const string ProviderName = "gitea";
-
     public static Exception MapRepository(
         Exception exception,
         string operation,
@@ -60,7 +59,7 @@ internal static class GiteaExceptionMapper
 
         return exception switch
         {
-            GiteaApiException api => MapApiException(api, message, notFound),
+            GiteaApiException api => MapApiException(api, operation, message, notFound),
             HttpRequestException http => new VcsProviderException(
                 $"{message}: {http.Message}",
                 http,
@@ -82,64 +81,35 @@ internal static class GiteaExceptionMapper
 
     private static Exception MapApiException(
         GiteaApiException exception,
+        string operation,
         string message,
         Func<Exception, Exception> notFound)
     {
-        var detail = SafeDetail(exception.ResponseBody);
-
         return exception.StatusCode switch
         {
-            HttpStatusCode.Unauthorized => new VcsAuthenticationException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Unauthorized => new VcsAuthenticationException(message, exception),
             HttpStatusCode.Forbidden => exception.RetryAfter is null
-                ? new VcsAuthorizationException($"{message}{detail}", exception)
-                : new VcsRateLimitException($"{message}{detail}", exception.RetryAfter, exception),
+                ? new VcsAuthorizationException(message, exception)
+                : new VcsRateLimitException(message, exception.RetryAfter, exception),
             HttpStatusCode.NotFound => notFound(exception),
-            HttpStatusCode.MethodNotAllowed => new VcsConflictException(
-                $"{message}{detail}",
+            HttpStatusCode.MethodNotAllowed => new VcsUnsupportedOperationException(
+                VcsProviderNames.Gitea,
+                operation,
                 exception),
-            HttpStatusCode.Conflict => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
-            HttpStatusCode.UnprocessableEntity => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
-            HttpStatusCode.Locked => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Conflict => new VcsConflictException(message, exception),
+            HttpStatusCode.UnprocessableEntity => new VcsConflictException(message, exception),
+            HttpStatusCode.Locked => new VcsConflictException(message, exception),
             HttpStatusCode.TooManyRequests => new VcsRateLimitException(
-                $"{message}{detail}",
+                message,
                 exception.RetryAfter,
                 exception),
-            HttpStatusCode.BadRequest => new VcsProviderException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.BadRequest => new VcsProviderException(message, exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
-                $"{message}{detail}",
+                message,
                 exception,
                 isTransient: true),
-            _ => new VcsProviderException(
-                $"{message}{detail}",
-                exception),
+            _ => new VcsProviderException(message, exception),
         };
-    }
-
-    private static string SafeDetail(string responseBody)
-    {
-        if (string.IsNullOrWhiteSpace(responseBody))
-        {
-            return string.Empty;
-        }
-
-        var detail = responseBody.Trim().ReplaceLineEndings(" ");
-        const int maxLength = 300;
-        if (detail.Length > maxLength)
-        {
-            detail = detail[..maxLength];
-        }
-
-        return $": {detail}";
     }
 
     private static string FormatMessage(string operation, string target)

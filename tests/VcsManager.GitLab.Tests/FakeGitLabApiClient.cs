@@ -184,7 +184,7 @@ internal sealed class FakeGitLabApiClient : IGitLabApiClient
         {
             Id = _nextMergeRequestId++,
             Iid = iid,
-            Title = GitLabDraftTitle.Apply(request.Title, request.Draft),
+            Title = ApplyDraftTitle(request.Title, request.Draft),
             Description = request.Description,
             SourceBranch = request.SourceBranch,
             TargetBranch = request.TargetBranch,
@@ -373,5 +373,14 @@ internal sealed class FakeGitLabApiClient : IGitLabApiClient
     {
         var segments = projectPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         return segments.Length == 0 ? projectPath : segments[^1];
+    }
+
+    private static string ApplyDraftTitle(string title, bool draft)
+    {
+        var trimmed = title.TrimStart();
+        var isDraft = trimmed.StartsWith("Draft:", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("WIP:", StringComparison.OrdinalIgnoreCase);
+
+        return draft && !isDraft ? $"Draft: {title}" : title;
     }
 }

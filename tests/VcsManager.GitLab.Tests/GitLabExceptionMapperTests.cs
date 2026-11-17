@@ -41,6 +41,22 @@ public sealed class GitLabExceptionMapperTests
         Assert.Same(exception, notFound.InnerException);
     }
 
+
+    [Fact]
+    public void MapRepository_DoesNotIncludeProviderResponseBody()
+    {
+        var exception = ApiException(
+            HttpStatusCode.Unauthorized,
+            "{\"token\":\"super-secret\"}");
+
+        var mapped = GitLabExceptionMapper.MapRepository(
+            exception,
+            "GetRepository",
+            Repository);
+
+        Assert.DoesNotContain("super-secret", mapped.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, typeof(VcsAuthenticationException))]
     [InlineData(HttpStatusCode.Forbidden, typeof(VcsAuthorizationException))]

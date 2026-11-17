@@ -266,6 +266,8 @@ internal sealed class FakeVcsProvider : IVcsProvider
         EnsureRepositoryExists(repository);
 
         var method = request?.Method ?? MergeMethod.Merge;
+        RequestValidation.ValidateMergeMethod(method);
+
         if (_unsupportedMergeMethod == method)
         {
             throw new VcsUnsupportedOperationException("fake", "MergePullRequest");

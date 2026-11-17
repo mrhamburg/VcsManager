@@ -198,7 +198,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         {
             SourceBranch = request.SourceBranch,
             TargetBranch = request.TargetBranch,
-            Title = GitLabDraftTitle.Apply(request.Title, request.Draft),
+            Title = DraftTitle.Apply(request.Title, request.Draft, "Draft:", "WIP:"),
             Description = request.Description,
         };
 
@@ -538,7 +538,8 @@ internal sealed class GitLabApiClient : IGitLabApiClient
         {
             VcsVisibility.Internal => "internal",
             VcsVisibility.Public => "public",
-            _ => "private",
+            VcsVisibility.Private => "private",
+            _ => throw new ArgumentOutOfRangeException(nameof(visibility), visibility, "Unsupported repository visibility."),
         };
     }
 
@@ -556,10 +557,11 @@ internal sealed class GitLabApiClient : IGitLabApiClient
     {
         return state switch
         {
+            null => "all",
             PullRequestState.Open or PullRequestState.Draft => "opened",
             PullRequestState.Closed => "closed",
             PullRequestState.Merged => "merged",
-            _ => "all",
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported pull request state."),
         };
     }
 
@@ -598,7 +600,7 @@ internal sealed class GitLabApiClient : IGitLabApiClient
     {
         var isDraft = response.Draft ||
             response.WorkInProgress ||
-            GitLabDraftTitle.IsDraft(response.Title);
+            DraftTitle.IsDraft(response.Title, "Draft:", "WIP:");
 
         return new GitLabMergeRequest
         {

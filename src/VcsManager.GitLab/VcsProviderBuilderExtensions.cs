@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.GitLab;
 
@@ -34,7 +35,7 @@ public static class VcsProviderBuilderExtensions
         var options = new GitLabOptions();
         configure(options);
 
-        builder.UseProvider("gitlab", settings =>
+        builder.UseProvider(VcsProviderNames.GitLab, settings =>
         {
             if (!string.IsNullOrWhiteSpace(options.Token))
             {

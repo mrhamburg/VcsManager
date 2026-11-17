@@ -50,112 +50,23 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
             _acquireTimeout = options.AcquireTimeout;
         }
 
-        public override Task<VcsRepository> CreateRepositoryAsync(
-            CreateRepositoryRequest request,
-            CancellationToken cancellationToken = default)
+        protected override async Task<T> ExecuteAsync<T>(
+            string operation,
+            string? repository,
+            int? pullRequestNumber,
+            Func<CancellationToken, Task<T>> call,
+            CancellationToken cancellationToken)
         {
-            return ExecuteAsync(
-                token => Inner.CreateRepositoryAsync(request, token),
-                cancellationToken);
-        }
+            await AcquireAsync(cancellationToken);
 
-        public override Task SeedRepositoryAsync(
-            RepositoryRef repository,
-            SeedRepositoryRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.SeedRepositoryAsync(repository, request, token),
-                cancellationToken);
-        }
-
-        public override Task<VcsRepository> GetRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.GetRepositoryAsync(repository, token),
-                cancellationToken);
-        }
-
-        public override Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
-            RepositoryQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ListRepositoriesAsync(query, pagination, token),
-                cancellationToken);
-        }
-
-        public override Task DeleteRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.DeleteRepositoryAsync(repository, token),
-                cancellationToken);
-        }
-
-        public override Task<bool> RepositoryExistsAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.RepositoryExistsAsync(repository, token),
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> CreatePullRequestAsync(
-            RepositoryRef repository,
-            CreatePullRequestRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.CreatePullRequestAsync(repository, request, token),
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> GetPullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.GetPullRequestAsync(repository, number, token),
-                cancellationToken);
-        }
-
-        public override Task<PagedResult<PullRequest>> ListPullRequestsAsync(
-            RepositoryRef repository,
-            PullRequestQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ListPullRequestsAsync(repository, query, pagination, token),
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> MergePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            MergePullRequestRequest? request = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.MergePullRequestAsync(repository, number, request, token),
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> ClosePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ClosePullRequestAsync(repository, number, token),
-                cancellationToken);
+            try
+            {
+                return await call(cancellationToken);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         public override ValueTask DisposeAsync()
@@ -163,35 +74,6 @@ public sealed class ConcurrentLimiterLayer : IVcsProviderLayer
             // The semaphore is not disposed: operations that are still running
             // must be able to release it. It holds no unmanaged resources.
             return base.DisposeAsync();
-        }
-
-        private async Task ExecuteAsync(
-            Func<CancellationToken, Task> operation,
-            CancellationToken cancellationToken)
-        {
-            await ExecuteAsync<object?>(
-                async token =>
-                {
-                    await operation(token);
-                    return null;
-                },
-                cancellationToken);
-        }
-
-        private async Task<T> ExecuteAsync<T>(
-            Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken)
-        {
-            await AcquireAsync(cancellationToken);
-
-            try
-            {
-                return await operation(cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
         }
 
         private async Task AcquireAsync(CancellationToken cancellationToken)

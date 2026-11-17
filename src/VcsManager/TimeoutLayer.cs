@@ -32,161 +32,26 @@ public sealed class TimeoutLayer : IVcsProviderLayer
     private sealed class TimeoutProvider(IVcsProvider inner, TimeoutLayerOptions options)
         : VcsProviderDecorator(inner)
     {
-        public override Task<VcsRepository> CreateRepositoryAsync(
-            CreateRepositoryRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.CreateRepositoryAsync(request, token),
-                "CreateRepository",
-                cancellationToken);
-        }
-
-        public override Task SeedRepositoryAsync(
-            RepositoryRef repository,
-            SeedRepositoryRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.SeedRepositoryAsync(repository, request, token),
-                "SeedRepository",
-                cancellationToken);
-        }
-
-        public override Task<VcsRepository> GetRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.GetRepositoryAsync(repository, token),
-                "GetRepository",
-                cancellationToken);
-        }
-
-        public override Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
-            RepositoryQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ListRepositoriesAsync(query, pagination, token),
-                "ListRepositories",
-                cancellationToken);
-        }
-
-        public override Task DeleteRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.DeleteRepositoryAsync(repository, token),
-                "DeleteRepository",
-                cancellationToken);
-        }
-
-        public override Task<bool> RepositoryExistsAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.RepositoryExistsAsync(repository, token),
-                "RepositoryExists",
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> CreatePullRequestAsync(
-            RepositoryRef repository,
-            CreatePullRequestRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.CreatePullRequestAsync(repository, request, token),
-                "CreatePullRequest",
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> GetPullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.GetPullRequestAsync(repository, number, token),
-                "GetPullRequest",
-                cancellationToken);
-        }
-
-        public override Task<PagedResult<PullRequest>> ListPullRequestsAsync(
-            RepositoryRef repository,
-            PullRequestQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ListPullRequestsAsync(repository, query, pagination, token),
-                "ListPullRequests",
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> MergePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            MergePullRequestRequest? request = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.MergePullRequestAsync(repository, number, request, token),
-                "MergePullRequest",
-                cancellationToken);
-        }
-
-        public override Task<PullRequest> ClosePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                token => Inner.ClosePullRequestAsync(repository, number, token),
-                "ClosePullRequest",
-                cancellationToken);
-        }
-
-        public override ValueTask DisposeAsync()
-        {
-            return Inner.DisposeAsync();
-        }
-
-        private async Task ExecuteAsync(
-            Func<CancellationToken, Task> operation,
-            string operationName,
+        protected override async Task<T> ExecuteAsync<T>(
+            string operation,
+            string? repository,
+            int? pullRequestNumber,
+            Func<CancellationToken, Task<T>> call,
             CancellationToken cancellationToken)
         {
-            await ExecuteAsync<object?>(
-                async token =>
-                {
-                    await operation(token);
-                    return null;
-                },
-                operationName,
-                cancellationToken);
-        }
-
-        private async Task<T> ExecuteAsync<T>(
-            Func<CancellationToken, Task<T>> operation,
-            string operationName,
-            CancellationToken cancellationToken)
-        {
-            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutSource.CancelAfter(options.Timeout);
+            Task<T>? task = null;
 
             try
             {
-                return await operation(timeoutSource.Token).WaitAsync(timeoutSource.Token);
+                task = call(cancellationToken);
+
+                // WaitAsync bounds the wait without disposing a linked token source
+                // while the inner operation may still observe that token.
+                return await task.WaitAsync(options.Timeout, cancellationToken);
             }
-            catch (OperationCanceledException)
-                when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            catch (TimeoutException) when (task is { IsCompleted: false })
             {
-                var message = $"{operationName} did not complete within {options.Timeout}.";
+                var message = $"{operation} did not complete within {options.Timeout}.";
                 throw new VcsProviderException(message, new TimeoutException(message), isTransient: true);
             }
         }
