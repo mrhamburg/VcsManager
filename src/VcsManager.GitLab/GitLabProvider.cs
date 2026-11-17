@@ -42,29 +42,17 @@ public sealed class GitLabProvider : IVcsProvider
         var repository = CreateRepositoryRef(owner, request.Project, request.Name);
         var namespacePath = GitLabProjectPath.CombineNamespace(owner, request.Project);
 
-        try
-        {
-            var project = await _client.CreateProjectAsync(
-                namespacePath,
-                request with { Name = request.Name.Trim() },
-                cancellationToken);
-            return GitLabMapper.ToRepository(project);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitLabMapper.ToRepository(
+                await _client.CreateProjectAsync(
+                    namespacePath,
+                    request with { Name = request.Name.Trim() },
+                    token)),
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "CreateRepository",
-                repository);
-        }
+                repository),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -78,25 +66,13 @@ public sealed class GitLabProvider : IVcsProvider
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
 
-        try
-        {
-            await _client.SeedProjectAsync(path, normalized, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.SeedProjectAsync(path, normalized, token),
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "SeedRepository",
-                resolved);
-        }
+                resolved),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -107,34 +83,25 @@ public sealed class GitLabProvider : IVcsProvider
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
 
-        try
-        {
-            var project = await _client.GetProjectAsync(path, cancellationToken);
-            if (project.IsDeleted)
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                throw new RepositoryNotFoundException(
-                    resolved.Owner,
-                    resolved.Project,
-                    resolved.Name);
-            }
+                var project = await _client.GetProjectAsync(path, token);
+                if (project.IsDeleted)
+                {
+                    throw new RepositoryNotFoundException(
+                        resolved.Owner,
+                        resolved.Project,
+                        resolved.Name);
+                }
 
-            return GitLabMapper.ToRepository(project);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+                return GitLabMapper.ToRepository(project);
+            },
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "GetRepository",
-                resolved);
-        }
+                resolved),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -151,38 +118,29 @@ public sealed class GitLabProvider : IVcsProvider
             ? null
             : GitLabProjectPath.CombineNamespace(owner, query.Project);
 
-        try
-        {
-            var page = await _client.ListProjectsAsync(
-                namespacePath,
-                query,
-                pagination,
-                cancellationToken);
-
-            return new PagedResult<VcsRepository>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(project => MatchesRepositoryQuery(project, query))
-                    .Select(GitLabMapper.ToRepository)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = pagination.PageSize,
-                TotalCount = page.TotalCount,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapOperation(exception, "ListRepositories");
-        }
+                var page = await _client.ListProjectsAsync(
+                    namespacePath,
+                    query,
+                    pagination,
+                    token);
+
+                return new PagedResult<VcsRepository>
+                {
+                    Items = page.Items
+                        .Where(project => MatchesRepositoryQuery(project, query))
+                        .Select(GitLabMapper.ToRepository)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = pagination.PageSize,
+                    TotalCount = page.TotalCount,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GitLabExceptionMapper.MapOperation(exception, "ListRepositories"),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -193,25 +151,13 @@ public sealed class GitLabProvider : IVcsProvider
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
 
-        try
-        {
-            await _client.DeleteProjectAsync(path, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.DeleteProjectAsync(path, token),
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "DeleteRepository",
-                resolved);
-        }
+                resolved),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -266,34 +212,22 @@ public sealed class GitLabProvider : IVcsProvider
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
         ValidateCreatePullRequestRequest(request);
 
-        try
-        {
-            var mergeRequest = await _client.CreateMergeRequestAsync(
-                path,
-                request with
-                {
-                    Title = request.Title.Trim(),
-                    SourceBranch = request.SourceBranch.Trim(),
-                    TargetBranch = request.TargetBranch.Trim(),
-                },
-                cancellationToken);
-            return GitLabMapper.ToPullRequest(mergeRequest);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitLabMapper.ToPullRequest(
+                await _client.CreateMergeRequestAsync(
+                    path,
+                    request with
+                    {
+                        Title = request.Title.Trim(),
+                        SourceBranch = request.SourceBranch.Trim(),
+                        TargetBranch = request.TargetBranch.Trim(),
+                    },
+                    token)),
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "CreatePullRequest",
-                resolved);
-        }
+                resolved),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -304,32 +238,17 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
 
-        try
-        {
-            var mergeRequest = await _client.GetMergeRequestAsync(
-                path,
-                number,
-                cancellationToken);
-            return GitLabMapper.ToPullRequest(mergeRequest);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapPullRequest(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GitLabMapper.ToPullRequest(
+                await _client.GetMergeRequestAsync(path, number, token)),
+            exception => GitLabExceptionMapper.MapPullRequest(
                 exception,
                 "GetPullRequest",
                 resolved,
-                number);
-        }
+                number),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -344,41 +263,32 @@ public sealed class GitLabProvider : IVcsProvider
         query = QueryNormalization.Normalize(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
-        try
-        {
-            var page = await _client.ListMergeRequestsAsync(
-                path,
-                query,
-                pagination,
-                cancellationToken);
-
-            return new PagedResult<PullRequest>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(mergeRequest => QueryMatcher.Matches(query, mergeRequest.State, mergeRequest.Author, mergeRequest.SourceBranch, mergeRequest.TargetBranch))
-                    .Select(GitLabMapper.ToPullRequest)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = pagination.PageSize,
-                TotalCount = page.TotalCount,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GitLabExceptionMapper.MapRepository(
+                var page = await _client.ListMergeRequestsAsync(
+                    path,
+                    query,
+                    pagination,
+                    token);
+
+                return new PagedResult<PullRequest>
+                {
+                    Items = page.Items
+                        .Where(mergeRequest => QueryMatcher.Matches(query, mergeRequest.State, mergeRequest.Author, mergeRequest.SourceBranch, mergeRequest.TargetBranch))
+                        .Select(GitLabMapper.ToPullRequest)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = pagination.PageSize,
+                    TotalCount = page.TotalCount,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GitLabExceptionMapper.MapRepository(
                 exception,
                 "ListPullRequests",
-                resolved);
-        }
+                resolved),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -390,7 +300,7 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
         ValidateMergeMethod(request.Method);
 
@@ -429,7 +339,7 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = ResolveRepository(repository);
         var path = GitLabProjectPath.From(resolved, _options.DefaultNamespace);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
 
         GitLabMergeRequest current;
         try
@@ -491,7 +401,7 @@ public sealed class GitLabProvider : IVcsProvider
     {
         var resolved = string.IsNullOrWhiteSpace(owner) ? _options.DefaultNamespace : owner;
 
-        return RequireValue(
+        return RequestValidation.RequireValue(
             resolved,
             "A GitLab namespace is required. Set Owner or GitLabOptions.DefaultNamespace.",
             nameof(owner));
@@ -508,7 +418,7 @@ public sealed class GitLabProvider : IVcsProvider
         ArgumentNullException.ThrowIfNull(repository);
 
         var owner = ResolveOwner(repository.Owner);
-        var name = RequireValue(
+        var name = RequestValidation.RequireValue(
             repository.Name,
             "A repository name is required.",
             nameof(repository));
@@ -533,7 +443,7 @@ public sealed class GitLabProvider : IVcsProvider
 
     private static void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
     {
-        RequireValue(request.Name, "A repository name is required.", nameof(request));
+        RequestValidation.RequireValue(request.Name, "A repository name is required.", nameof(request));
     }
 
     private static void ValidateMergeMethod(MergeMethod method)
@@ -541,7 +451,7 @@ public sealed class GitLabProvider : IVcsProvider
         if (method == MergeMethod.Rebase)
         {
             throw new VcsUnsupportedOperationException(
-                "gitlab",
+                VcsProviderNames.GitLab,
                 "MergePullRequest with MergeMethod.Rebase");
         }
 
@@ -556,20 +466,9 @@ public sealed class GitLabProvider : IVcsProvider
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
     {
-        RequireValue(request.Title, "A pull request title is required.", nameof(request));
-        RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
-        RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
-    }
-
-    private static void ValidatePullRequestNumber(int number)
-    {
-        if (number < 1)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(number),
-                number,
-                "The pull request number must be at least 1.");
-        }
+        RequestValidation.RequireValue(request.Title, "A pull request title is required.", nameof(request));
+        RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
+        RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
     }
 
     private static bool MatchesRepositoryQuery(GitLabProject project, RepositoryQuery query)
@@ -587,16 +486,6 @@ public sealed class GitLabProvider : IVcsProvider
         return string.IsNullOrWhiteSpace(query.NameContains) ||
             project.Path.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase) ||
             project.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string RequireValue(string? value, string message, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException(message, parameterName);
-        }
-
-        return value.Trim();
     }
 
     private static IGitLabApiClient CreateClient(GitLabOptions options)

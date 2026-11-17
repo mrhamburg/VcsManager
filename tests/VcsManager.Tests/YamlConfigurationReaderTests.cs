@@ -117,6 +117,58 @@ public class YamlConfigurationReaderTests
         Assert.Equal("YAML configuration is not valid.", exception.Message);
     }
 
+
+    [Fact]
+    public void Read_SequenceSetting_Throws()
+    {
+        var yaml = """
+            provider:
+              github:
+                scopes:
+                  - repo
+                  - user
+            """;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => YamlConfigurationReader.Read(yaml));
+
+        Assert.Contains("must be a scalar or a mapping", exception.Message);
+    }
+
+    [Fact]
+    public void Read_MultipleDocuments_Throws()
+    {
+        var yaml = """
+            provider:
+              github:
+                token: abc
+            ---
+            provider:
+              gitlab:
+                token: def
+            """;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => YamlConfigurationReader.Read(yaml));
+
+        Assert.Contains("exactly one document", exception.Message);
+    }
+
+    [Fact]
+    public void Read_ProviderKey_IsCaseInsensitive()
+    {
+        var yaml = """
+            Provider:
+              github:
+                token: abc
+            """;
+
+        var configuration = YamlConfigurationReader.Read(yaml);
+
+        Assert.Equal("github", configuration.ProviderName);
+        Assert.Equal("abc", configuration.Settings["token"]);
+    }
+
     [Fact]
     public void Read_BlankValues_AreSkipped()
     {

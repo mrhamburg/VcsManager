@@ -42,8 +42,18 @@ public static class YamlConfigurationReader
             throw new InvalidOperationException("YAML configuration is not valid.", exception);
         }
 
-        if (stream.Documents.Count == 0 ||
-            stream.Documents[0].RootNode is not YamlMappingNode root)
+        if (stream.Documents.Count == 0)
+        {
+            throw new InvalidOperationException("YAML document is empty.");
+        }
+
+        if (stream.Documents.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"YAML must contain exactly one document. Found {stream.Documents.Count}.");
+        }
+
+        if (stream.Documents[0].RootNode is not YamlMappingNode root)
         {
             throw new InvalidOperationException("YAML document is empty.");
         }
@@ -63,11 +73,21 @@ public static class YamlConfigurationReader
 
         var entry = providers.Children.First();
         var providerName = GetScalar(entry.Key);
+        if (string.IsNullOrWhiteSpace(providerName))
+        {
+            throw new InvalidOperationException("A provider name is required under 'provider'.");
+        }
+
         var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         if (entry.Value is YamlMappingNode providerSettings)
         {
             Flatten(providerSettings, prefix: string.Empty, settings);
+        }
+        else if (entry.Value is not YamlScalarNode { Value: null or "" })
+        {
+            throw new InvalidOperationException(
+                $"The settings for provider '{providerName}' must be a mapping.");
         }
 
         return new VcsProviderConfiguration
@@ -93,10 +113,17 @@ public static class YamlConfigurationReader
             {
                 Flatten(nested, key, target);
             }
-            else if (entry.Value is YamlScalarNode { Value: { } value } &&
-                !string.IsNullOrWhiteSpace(value))
+            else if (entry.Value is YamlScalarNode { Value: { } value })
             {
-                target[key] = value;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    target[key] = value;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"YAML setting '{key}' must be a scalar or a mapping.");
             }
         }
     }
@@ -106,7 +133,7 @@ public static class YamlConfigurationReader
         foreach (var entry in node.Children)
         {
             if (entry.Key is YamlScalarNode { Value: { } value } &&
-                string.Equals(value, name, StringComparison.Ordinal))
+                string.Equals(value, name, StringComparison.OrdinalIgnoreCase))
             {
                 return entry.Value;
             }

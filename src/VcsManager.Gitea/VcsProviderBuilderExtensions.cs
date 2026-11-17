@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.Gitea;
 
@@ -34,7 +35,7 @@ public static class VcsProviderBuilderExtensions
         var options = new GiteaOptions();
         configure(options);
 
-        builder.UseProvider("gitea", settings =>
+        builder.UseProvider(VcsProviderNames.Gitea, settings =>
         {
             if (!string.IsNullOrWhiteSpace(options.Token))
             {

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using VcsManager.Internal;
 
 namespace VcsManager;
 
@@ -38,158 +37,28 @@ public sealed class LoggingLayer : IVcsProviderLayer
         private readonly IVcsProviderLogger _logger = options.Logger;
         private readonly string _providerName = options.ProviderName;
 
-        public override Task<VcsRepository> CreateRepositoryAsync(
-            CreateRepositoryRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(request);
-            return ExecuteAsync(
-                Context(
-                    "CreateRepository",
-                    RepositoryDisplayName.Format(request.Owner, request.Project, request.Name)),
-                token => Inner.CreateRepositoryAsync(request, token), cancellationToken);
-        }
-
-        public override Task SeedRepositoryAsync(
-            RepositoryRef repository,
-            SeedRepositoryRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("SeedRepository", RepositoryDisplayName.Format(repository)),
-                async token =>
-                {
-                    await Inner.SeedRepositoryAsync(repository, request, token);
-                    return true;
-                },
-                cancellationToken);
-        }
-
-        public override Task<VcsRepository> GetRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("GetRepository", RepositoryDisplayName.Format(repository)),
-                token => Inner.GetRepositoryAsync(repository, token), cancellationToken);
-        }
-
-        public override Task<PagedResult<VcsRepository>> ListRepositoriesAsync(
-            RepositoryQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("ListRepositories", FormatScope(query?.Owner, query?.Project)),
-                token => Inner.ListRepositoriesAsync(query, pagination, token), cancellationToken);
-        }
-
-        public override Task DeleteRepositoryAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("DeleteRepository", RepositoryDisplayName.Format(repository)),
-                async token =>
-                {
-                    await Inner.DeleteRepositoryAsync(repository, token);
-                    return true;
-                },
-                cancellationToken);
-        }
-
-        public override Task<bool> RepositoryExistsAsync(
-            RepositoryRef repository,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("RepositoryExists", RepositoryDisplayName.Format(repository)),
-                token => Inner.RepositoryExistsAsync(repository, token), cancellationToken);
-        }
-
-        public override Task<PullRequest> CreatePullRequestAsync(
-            RepositoryRef repository,
-            CreatePullRequestRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("CreatePullRequest", RepositoryDisplayName.Format(repository)),
-                token => Inner.CreatePullRequestAsync(repository, request, token), cancellationToken);
-        }
-
-        public override Task<PullRequest> GetPullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("GetPullRequest", RepositoryDisplayName.Format(repository), number),
-                token => Inner.GetPullRequestAsync(repository, number, token), cancellationToken);
-        }
-
-        public override Task<PagedResult<PullRequest>> ListPullRequestsAsync(
-            RepositoryRef repository,
-            PullRequestQuery? query = null,
-            PaginationOptions? pagination = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("ListPullRequests", RepositoryDisplayName.Format(repository)),
-                token => Inner.ListPullRequestsAsync(repository, query, pagination, token), cancellationToken);
-        }
-
-        public override Task<PullRequest> MergePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            MergePullRequestRequest? request = null,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("MergePullRequest", RepositoryDisplayName.Format(repository), number),
-                token => Inner.MergePullRequestAsync(repository, number, request, token), cancellationToken);
-        }
-
-        public override Task<PullRequest> ClosePullRequestAsync(
-            RepositoryRef repository,
-            int number,
-            CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(
-                Context("ClosePullRequest", RepositoryDisplayName.Format(repository), number),
-                token => Inner.ClosePullRequestAsync(repository, number, token), cancellationToken);
-        }
-
-        public override ValueTask DisposeAsync()
-        {
-            return Inner.DisposeAsync();
-        }
-
-        private VcsProviderLogContext Context(
+        protected override async Task<T> ExecuteAsync<T>(
             string operation,
-            string? repository = null,
-            int? pullRequestNumber = null)
+            string? repository,
+            int? pullRequestNumber,
+            Func<CancellationToken, Task<T>> call,
+            CancellationToken cancellationToken)
         {
-            return new VcsProviderLogContext
+            var context = new VcsProviderLogContext
             {
                 ProviderName = _providerName,
                 Operation = operation,
                 Repository = repository,
                 PullRequestNumber = pullRequestNumber,
             };
-        }
 
-        private async Task<T> ExecuteAsync<T>(
-            VcsProviderLogContext context,
-            Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken)
-        {
             var started = Stopwatch.GetTimestamp();
             _logger.LogStart(context with { Outcome = "start" });
 
             T result;
             try
             {
-                result = await operation(cancellationToken);
+                result = await call(cancellationToken);
             }
             catch (Exception exception)
             {
@@ -204,27 +73,6 @@ public sealed class LoggingLayer : IVcsProviderLayer
                 context with { Outcome = "success" },
                 Stopwatch.GetElapsedTime(started));
             return result;
-        }
-
-        private static string? FormatScope(string? owner, string? project)
-        {
-            if (string.IsNullOrWhiteSpace(owner) && string.IsNullOrWhiteSpace(project))
-            {
-                return null;
-            }
-
-            var parts = new List<string>(2);
-            if (!string.IsNullOrWhiteSpace(owner))
-            {
-                parts.Add(owner);
-            }
-
-            if (!string.IsNullOrWhiteSpace(project))
-            {
-                parts.Add(project);
-            }
-
-            return string.Join("/", parts);
         }
     }
 }

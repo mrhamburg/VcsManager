@@ -55,7 +55,6 @@ public sealed class GiteaMergeAndCloseTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.MethodNotAllowed)]
     [InlineData(HttpStatusCode.Conflict)]
     [InlineData(HttpStatusCode.Locked)]
     public async Task MergePullRequest_RejectedByRepository_ThrowsConflict(
@@ -80,6 +79,31 @@ public sealed class GiteaMergeAndCloseTests
                 7));
 
         Assert.Contains("MergePullRequest", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MergePullRequest_RejectedWithMethodNotAllowed_ThrowsUnsupported()
+    {
+        var (provider, client) = CreateProvider();
+        SetupActivePullRequest(client);
+
+        client.MergePullRequestAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Any<MergePullRequestRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<GiteaPullRequest>>(_ => throw TestData.ApiException(
+                HttpStatusCode.MethodNotAllowed,
+                "{\"message\":\"merge style disabled\"}"));
+
+        var exception = await Assert.ThrowsAsync<VcsUnsupportedOperationException>(
+            () => provider.MergePullRequestAsync(
+                GiteaPullRequestTests.CreateRepositoryRef(),
+                7));
+
+        Assert.Equal("gitea", exception.Provider);
+        Assert.Contains("MergePullRequest", exception.Operation, StringComparison.Ordinal);
     }
 
     [Fact]

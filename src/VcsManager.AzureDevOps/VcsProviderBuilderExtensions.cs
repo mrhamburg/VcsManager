@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.AzureDevOps;
 
@@ -34,7 +35,7 @@ public static class VcsProviderBuilderExtensions
         var options = new AzureDevOpsOptions();
         configure(options);
 
-        builder.UseProvider("azuredevops", settings =>
+        builder.UseProvider(VcsProviderNames.AzureDevOps, settings =>
         {
             if (!string.IsNullOrWhiteSpace(options.OrganizationUrl))
             {

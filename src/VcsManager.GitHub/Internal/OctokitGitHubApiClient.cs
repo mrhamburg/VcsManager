@@ -340,9 +340,10 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
     {
         return state switch
         {
+            null => "all",
             PullRequestState.Open or PullRequestState.Draft => "open",
             PullRequestState.Closed or PullRequestState.Merged => "closed",
-            _ => "all",
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported pull request state."),
         };
     }
 
@@ -357,7 +358,8 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         {
             VcsVisibility.Internal => RepositoryVisibility.Internal,
             VcsVisibility.Public => RepositoryVisibility.Public,
-            _ => RepositoryVisibility.Private,
+            VcsVisibility.Private => RepositoryVisibility.Private,
+            _ => throw new ArgumentOutOfRangeException(nameof(visibility), visibility, "Unsupported repository visibility."),
         };
     }
 
@@ -365,9 +367,10 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
     {
         return method switch
         {
+            MergeMethod.Merge => PullRequestMergeMethod.Merge,
             MergeMethod.Squash => PullRequestMergeMethod.Squash,
             MergeMethod.Rebase => PullRequestMergeMethod.Rebase,
-            _ => PullRequestMergeMethod.Merge,
+            _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported merge method."),
         };
     }
 
