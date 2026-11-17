@@ -282,7 +282,7 @@ public sealed class GiteaProvider : IVcsProvider
         var (owner, name) = ResolveRepository(repository);
         RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
-        ValidateMergeMethod(request.Method);
+        RequestValidation.ValidateMergeMethod(request.Method);
         var resolved = RepositoryRefOf(owner, name);
 
         GiteaPullRequest current;
@@ -509,17 +509,6 @@ public sealed class GiteaProvider : IVcsProvider
             SourceBranch = RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
             TargetBranch = RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
         };
-    }
-
-    private static void ValidateMergeMethod(MergeMethod method)
-    {
-        if (!Enum.IsDefined(method))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(method),
-                method,
-                "The merge method is not valid.");
-        }
     }
 
     private static RepositoryRef RepositoryRefOf(string owner, string name)

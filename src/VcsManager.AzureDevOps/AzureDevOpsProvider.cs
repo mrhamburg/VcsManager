@@ -293,7 +293,7 @@ public sealed class AzureDevOpsProvider : IVcsProvider
         var (owner, project, name) = ResolveRepository(repository);
         RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
-        ValidateMergeMethod(request.Method);
+        RequestValidation.ValidateMergeMethod(request.Method);
         var resolved = RepositoryRefOf(owner, project, name);
 
         AzureDevOpsPullRequest current;
@@ -501,17 +501,6 @@ public sealed class AzureDevOpsProvider : IVcsProvider
         RequestValidation.RequireValue(request.Title, "A pull request title is required.", nameof(request));
         RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request));
         RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request));
-    }
-
-    private static void ValidateMergeMethod(MergeMethod method)
-    {
-        if (!Enum.IsDefined(method))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(method),
-                method,
-                "The merge method is not valid.");
-        }
     }
 
     private static IAzureDevOpsApiClient CreateClient(AzureDevOpsOptions options)

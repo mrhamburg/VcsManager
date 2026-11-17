@@ -12,6 +12,17 @@ internal static class RequestValidation
         return value.Trim();
     }
 
+    public static void ValidateMergeMethod(MergeMethod method)
+    {
+        if (!Enum.IsDefined(method))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(method),
+                method,
+                "The merge method is not valid.");
+        }
+    }
+
     public static void ValidatePullRequestNumber(int number)
     {
         if (number < 1)

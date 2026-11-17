@@ -39,6 +39,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             Visibility = MapVisibility(request.Visibility),
         };
 
+        cancellationToken.ThrowIfCancellationRequested();
         var repository = owner is null
             ? await _client.Repository.Create(newRepository)
             : await _client.Repository.Create(owner, newRepository);
@@ -47,6 +48,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             !string.IsNullOrWhiteSpace(repository.DefaultBranch) &&
             !string.Equals(repository.DefaultBranch, request.DefaultBranch, StringComparison.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             repository = await _client.Repository.Edit(
                 owner ?? repository.Owner.Login,
                 request.Name,
@@ -62,6 +64,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         SeedRepositoryRequest request,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var repository = await _client.Repository.Get(owner, name);
         await EnsureEmptyRepositoryAsync(owner, name, cancellationToken);
 
@@ -127,6 +130,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
 
         if (!string.Equals(repository.DefaultBranch, request.Branch, StringComparison.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await _client.Repository.Edit(
                 owner,
                 name,
@@ -139,6 +143,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         string name,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return MapRepository(await _client.Repository.Get(owner, name));
     }
 
@@ -147,6 +152,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         string name,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         await _client.Repository.Delete(owner, name);
     }
 
@@ -204,6 +210,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             Draft = request.Draft ? true : null,
         };
 
+        cancellationToken.ThrowIfCancellationRequested();
         return MapPullRequest(await _client.PullRequest.Create(owner, name, newPullRequest));
     }
 
@@ -213,6 +220,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         int number,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return MapPullRequest(await _client.PullRequest.Get(owner, name, number));
     }
 
@@ -256,6 +264,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
             CommitMessage = request.CommitMessage,
         };
 
+        cancellationToken.ThrowIfCancellationRequested();
         var result = await _client.PullRequest.Merge(owner, name, number, merge);
         if (!result.Merged)
         {
@@ -264,6 +273,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
                 (string.IsNullOrWhiteSpace(result.Message) ? "the pull request is not mergeable." : result.Message));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return MapPullRequest(await _client.PullRequest.Get(owner, name, number));
     }
 
@@ -273,6 +283,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         int number,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return MapPullRequest(
             await _client.PullRequest.Update(
                 owner,
@@ -287,6 +298,7 @@ internal sealed class OctokitGitHubApiClient : IGitHubApiClient
         string branch,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         await _client.Git.Reference.Delete(owner, name, $"heads/{branch}");
     }
 

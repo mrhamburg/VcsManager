@@ -297,7 +297,7 @@ public sealed partial class GitHubProvider : IVcsProvider
         var (owner, name) = ResolveRepository(repository);
         RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
-        ValidateMergeMethod(request.Method);
+        RequestValidation.ValidateMergeMethod(request.Method);
 
         GitHubPullRequest merged;
         try
@@ -483,14 +483,6 @@ public sealed partial class GitHubProvider : IVcsProvider
             SourceBranch = RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
             TargetBranch = RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
         };
-    }
-
-    private static void ValidateMergeMethod(MergeMethod method)
-    {
-        if (method is not (MergeMethod.Merge or MergeMethod.Squash or MergeMethod.Rebase))
-        {
-            throw new ArgumentOutOfRangeException(nameof(method), method, "The merge method is not valid.");
-        }
     }
 
     private static bool MatchesRepositoryQuery(GitHubRepository repository, RepositoryQuery query)

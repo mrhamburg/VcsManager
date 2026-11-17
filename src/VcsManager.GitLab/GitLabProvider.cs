@@ -455,13 +455,7 @@ public sealed class GitLabProvider : IVcsProvider
                 "MergePullRequest with MergeMethod.Rebase");
         }
 
-        if (method is not (MergeMethod.Merge or MergeMethod.Squash))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(method),
-                method,
-                "The merge method is not valid.");
-        }
+        RequestValidation.ValidateMergeMethod(method);
     }
 
     private static void ValidateCreatePullRequestRequest(CreatePullRequestRequest request)
