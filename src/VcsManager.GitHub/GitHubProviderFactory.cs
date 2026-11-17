@@ -1,5 +1,5 @@
-using System.Globalization;
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.GitHub;
 
@@ -9,7 +9,7 @@ namespace VcsManager.GitHub;
 public sealed class GitHubProviderFactory : IVcsProviderFactory
 {
     /// <inheritdoc/>
-    public string ProviderName => "github";
+    public string ProviderName => VcsProviderNames.GitHub;
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> is <see langword="null"/>.</exception>
@@ -26,48 +26,27 @@ public sealed class GitHubProviderFactory : IVcsProviderFactory
 
         var options = new GitHubOptions();
 
-        if (TryGetValue(configuration, "token", out var token))
+        if (ProviderConfiguration.TryGetValue(configuration, "token", out var token))
         {
             options.Token = token;
         }
 
-        if (TryGetValue(configuration, "base.url", out var baseUrl))
+        if (ProviderConfiguration.TryGetValue(configuration, "base.url", out var baseUrl))
         {
             options.BaseUrl = baseUrl;
         }
 
-        if (TryGetValue(configuration, "default.owner", out var defaultOwner))
+        if (ProviderConfiguration.TryGetValue(configuration, "default.owner", out var defaultOwner))
         {
             options.DefaultOwner = defaultOwner;
         }
 
-        if (TryGetValue(configuration, "request.timeout", out var requestTimeout))
+        if (ProviderConfiguration.TryGetValue(configuration, "request.timeout", out var requestTimeout))
         {
-            if (!TimeSpan.TryParseExact(requestTimeout, "c", CultureInfo.InvariantCulture, out var timeout))
-            {
-                throw new ArgumentException(
-                    "The 'request.timeout' configuration setting must be a time span such as '00:01:40'.",
-                    nameof(configuration));
-            }
-
-            options.RequestTimeout = timeout;
+            options.RequestTimeout = ProviderConfiguration.ParseTimeSpan(requestTimeout, "request.timeout");
         }
 
         return options;
     }
 
-    private static bool TryGetValue(
-        IReadOnlyDictionary<string, string> configuration,
-        string key,
-        out string value)
-    {
-        if (configuration.TryGetValue(key, out var found) && !string.IsNullOrWhiteSpace(found))
-        {
-            value = found.Trim();
-            return true;
-        }
-
-        value = string.Empty;
-        return false;
-    }
 }

@@ -76,7 +76,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
             if (currentUser.Id != ownerInfo.Id)
             {
                 throw new VcsUnsupportedOperationException(
-                    "gitea",
+                    VcsProviderNames.Gitea,
                     "CreateRepository",
                     new InvalidOperationException(
                         $"Gitea cannot create a repository for user '{owner}' with the current token. " +
@@ -214,7 +214,7 @@ internal sealed class GiteaApiClient : IGiteaApiClient
         {
             Head = request.SourceBranch,
             Base = request.TargetBranch,
-            Title = GiteaDraftTitle.Apply(request.Title, request.Draft),
+            Title = DraftTitle.Apply(request.Title, request.Draft, "WIP:"),
             Body = request.Description,
         };
 
@@ -572,9 +572,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     {
         return state switch
         {
+            null => "all",
             PullRequestState.Open or PullRequestState.Draft => "open",
             PullRequestState.Closed or PullRequestState.Merged => "closed",
-            _ => "all",
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported pull request state."),
         };
     }
 
@@ -582,9 +583,10 @@ internal sealed class GiteaApiClient : IGiteaApiClient
     {
         return method switch
         {
+            MergeMethod.Merge => "merge",
             MergeMethod.Squash => "squash",
             MergeMethod.Rebase => "rebase",
-            _ => "merge",
+            _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported merge method."),
         };
     }
 }

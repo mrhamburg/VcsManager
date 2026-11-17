@@ -1,4 +1,5 @@
 using System.Globalization;
+using VcsManager.Internal;
 
 namespace VcsManager.Gitea.Internal;
 
@@ -70,7 +71,7 @@ internal static class GiteaMapper
 
     public static GiteaPullRequest FromPullRequestResponse(GiteaPullRequestResponse response)
     {
-        var isDraft = response.Draft || GiteaDraftTitle.IsDraft(response.Title);
+        var isDraft = response.Draft || DraftTitle.IsDraft(response.Title, "WIP:");
 
         // A merged pull request has state = closed and merged = true. Check the
         // merged flag first so it is not reported as merely closed.

@@ -1,4 +1,5 @@
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.GitLab;
 
@@ -8,7 +9,7 @@ namespace VcsManager.GitLab;
 public sealed class GitLabProviderFactory : IVcsProviderFactory
 {
     /// <inheritdoc/>
-    public string ProviderName => "gitlab";
+    public string ProviderName => VcsProviderNames.GitLab;
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> is <see langword="null"/>.</exception>
@@ -25,17 +26,17 @@ public sealed class GitLabProviderFactory : IVcsProviderFactory
 
         var options = new GitLabOptions();
 
-        if (TryGetValue(configuration, "token", out var token))
+        if (ProviderConfiguration.TryGetValue(configuration, "token", out var token))
         {
             options.Token = token;
         }
 
-        if (TryGetValue(configuration, "base.url", out var baseUrl))
+        if (ProviderConfiguration.TryGetValue(configuration, "base.url", out var baseUrl))
         {
             options.BaseUrl = baseUrl;
         }
 
-        if (TryGetValue(configuration, "default.namespace", out var defaultNamespace))
+        if (ProviderConfiguration.TryGetValue(configuration, "default.namespace", out var defaultNamespace))
         {
             options.DefaultNamespace = defaultNamespace;
         }
@@ -43,18 +44,4 @@ public sealed class GitLabProviderFactory : IVcsProviderFactory
         return options;
     }
 
-    private static bool TryGetValue(
-        IReadOnlyDictionary<string, string> configuration,
-        string key,
-        out string value)
-    {
-        if (configuration.TryGetValue(key, out var found) && !string.IsNullOrWhiteSpace(found))
-        {
-            value = found.Trim();
-            return true;
-        }
-
-        value = string.Empty;
-        return false;
-    }
 }

@@ -14,9 +14,10 @@ internal static class AzureDevOpsMapper
     {
         return method switch
         {
+            MergeMethod.Merge => GitPullRequestMergeStrategy.NoFastForward,
             MergeMethod.Squash => GitPullRequestMergeStrategy.Squash,
             MergeMethod.Rebase => GitPullRequestMergeStrategy.Rebase,
-            _ => GitPullRequestMergeStrategy.NoFastForward,
+            _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported merge method."),
         };
     }
 

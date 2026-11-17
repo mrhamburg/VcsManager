@@ -19,6 +19,19 @@ public sealed class AzureDevOpsExceptionMapperTests
         Assert.Same(inner, exception.InnerException);
     }
 
+
+    [Fact]
+    public void MapOperation_DoesNotIncludeProviderResponseBody()
+    {
+        var mapped = AzureDevOpsExceptionMapper.MapOperation(
+            new AzureDevOpsApiException(
+                HttpStatusCode.Unauthorized,
+                "{\"token\":\"super-secret\"}"),
+            "ListRepositories");
+
+        Assert.DoesNotContain("super-secret", mapped.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(typeof(OperationCanceledException))]
     [InlineData(typeof(TaskCanceledException))]

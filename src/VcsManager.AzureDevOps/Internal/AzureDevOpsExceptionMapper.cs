@@ -78,14 +78,12 @@ internal static class AzureDevOpsExceptionMapper
         {
             AzureDevOpsApiException api => MapStatus(
                 api.StatusCode,
-                api.ResponseBody,
                 message,
                 notFound,
                 conflictOnBadRequest,
                 api),
             VssServiceResponseException response => MapStatus(
                 response.HttpStatusCode,
-                response.Content,
                 message,
                 notFound,
                 conflictOnBadRequest,
@@ -125,38 +123,29 @@ internal static class AzureDevOpsExceptionMapper
 
     private static Exception MapStatus(
         HttpStatusCode statusCode,
-        string? content,
         string message,
         Func<Exception, Exception> notFound,
         bool conflictOnBadRequest,
         Exception exception)
     {
-        var detail = SafeDetail(content);
-
         return statusCode switch
         {
-            HttpStatusCode.Unauthorized => new VcsAuthenticationException(
-                $"{message}{detail}",
-                exception),
-            HttpStatusCode.Forbidden => new VcsAuthorizationException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Unauthorized => new VcsAuthenticationException(message, exception),
+            HttpStatusCode.Forbidden => new VcsAuthorizationException(message, exception),
             HttpStatusCode.NotFound => notFound(exception),
-            HttpStatusCode.Conflict => new VcsConflictException(
-                $"{message}{detail}",
-                exception),
+            HttpStatusCode.Conflict => new VcsConflictException(message, exception),
             HttpStatusCode.BadRequest when conflictOnBadRequest => new VcsConflictException(
-                $"{message}{detail}",
+                message,
                 exception),
             HttpStatusCode.TooManyRequests => new VcsRateLimitException(
-                $"{message}{detail}",
+                message,
                 retryAfter: (exception as AzureDevOpsApiException)?.RetryAfter,
                 exception),
             >= HttpStatusCode.InternalServerError => new VcsProviderException(
-                $"{message}{detail}",
+                message,
                 exception,
                 isTransient: true),
-            _ => new VcsProviderException($"{message}{detail}", exception),
+            _ => new VcsProviderException(message, exception),
         };
     }
 
@@ -164,23 +153,6 @@ internal static class AzureDevOpsExceptionMapper
     {
         var delay = exception.RetryAfterDateTime - DateTime.UtcNow;
         return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
-    }
-
-    private static string SafeDetail(string? content)
-    {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return string.Empty;
-        }
-
-        var detail = content.Trim().ReplaceLineEndings(" ");
-        const int maxLength = 300;
-        if (detail.Length > maxLength)
-        {
-            detail = detail[..maxLength];
-        }
-
-        return $": {detail}";
     }
 
     private static string FormatRepositoryName(RepositoryRef repository)

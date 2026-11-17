@@ -1,5 +1,6 @@
 using System.Globalization;
 using VcsManager.Builder;
+using VcsManager.Internal;
 
 namespace VcsManager.GitHub;
 
@@ -35,7 +36,7 @@ public static class VcsProviderBuilderExtensions
         var options = new GitHubOptions();
         configure(options);
 
-        builder.UseProvider("github", settings =>
+        builder.UseProvider(VcsProviderNames.GitHub, settings =>
         {
             if (!string.IsNullOrWhiteSpace(options.Token))
             {

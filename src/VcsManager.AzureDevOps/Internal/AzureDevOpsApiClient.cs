@@ -491,10 +491,11 @@ internal sealed class AzureDevOpsApiClient : IAzureDevOpsApiClient
     {
         return state switch
         {
+            null => PullRequestStatus.All,
             PullRequestState.Open or PullRequestState.Draft => PullRequestStatus.Active,
             PullRequestState.Closed => PullRequestStatus.Abandoned,
             PullRequestState.Merged => PullRequestStatus.Completed,
-            _ => PullRequestStatus.All,
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported pull request state."),
         };
     }
 }

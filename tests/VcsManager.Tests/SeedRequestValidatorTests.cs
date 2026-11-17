@@ -89,6 +89,22 @@ public class SeedRequestValidatorTests
         Assert.Throws<ArgumentException>(() => SeedRequestValidator.Normalize(request));
     }
 
+
+    [Fact]
+    public void Normalize_InvalidPath_ReportsFilesParameter()
+    {
+        var request = new SeedRepositoryRequest
+        {
+            Branch = "main",
+            Files = [File("../outside.txt", "content")],
+        };
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => SeedRequestValidator.Normalize(request));
+
+        Assert.Equal(nameof(SeedRepositoryRequest.Files), exception.ParamName);
+    }
+
     [Fact]
     public void Normalize_RejectsDuplicatePaths()
     {

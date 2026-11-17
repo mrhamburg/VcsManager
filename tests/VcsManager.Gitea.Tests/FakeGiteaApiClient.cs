@@ -141,8 +141,8 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
         EnsureRepository(owner, repositoryName);
 
         var number = _nextPullRequestNumber++;
-        var title = GiteaDraftTitle.Apply(request.Title, request.Draft);
-        var isDraft = request.Draft || GiteaDraftTitle.IsDraft(title);
+        var title = ApplyDraftTitle(request.Title, request.Draft);
+        var isDraft = request.Draft || IsDraftTitle(title);
 
         var pullRequest = new GiteaPullRequest
         {
@@ -351,5 +351,15 @@ internal sealed class FakeGiteaApiClient : IGiteaApiClient
     private static string PullRequestKey(string owner, string repositoryName, int number)
     {
         return $"{owner}|{repositoryName}|{number.ToString(CultureInfo.InvariantCulture)}";
+    }
+
+    private static bool IsDraftTitle(string title)
+    {
+        return title.TrimStart().StartsWith("WIP:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ApplyDraftTitle(string title, bool draft)
+    {
+        return draft && !IsDraftTitle(title) ? $"WIP: {title}" : title;
     }
 }

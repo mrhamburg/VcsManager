@@ -10,6 +10,8 @@ public class ConcurrentLimiterLayerTests
         var current = 0;
         var maximum = 0;
         var gate = new object();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var maxReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var inner = Substitute.For<IVcsProvider>();
         inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
@@ -20,7 +22,12 @@ public class ConcurrentLimiterLayerTests
                     maximum = Math.Max(maximum, now);
                 }
 
-                await Task.Delay(50);
+                if (now == 2)
+                {
+                    maxReached.TrySetResult();
+                }
+
+                await release.Task;
                 Interlocked.Decrement(ref current);
                 return true;
             });
@@ -30,9 +37,13 @@ public class ConcurrentLimiterLayerTests
             MaxConcurrentRequests = 2,
         }).Wrap(inner);
 
-        await Task.WhenAll(
-            Enumerable.Range(0, 8)
-                .Select(_ => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" })));
+        var pending = Enumerable.Range(0, 8)
+            .Select(_ => provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" }))
+            .ToArray();
+
+        await maxReached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        release.SetResult();
+        await Task.WhenAll(pending);
 
         Assert.Equal(2, maximum);
     }
@@ -43,6 +54,8 @@ public class ConcurrentLimiterLayerTests
     {
         var current = 0;
         var maximum = 0;
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var maxReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var inner = Substitute.For<IVcsProvider>();
         inner.SeedRepositoryAsync(
                 Arg.Any<RepositoryRef>(),
@@ -52,7 +65,13 @@ public class ConcurrentLimiterLayerTests
             {
                 var now = Interlocked.Increment(ref current);
                 InterlockedMax(ref maximum, now);
-                await Task.Delay(50);
+
+                if (now == 2)
+                {
+                    maxReached.TrySetResult();
+                }
+
+                await release.Task;
                 Interlocked.Decrement(ref current);
             });
 
@@ -73,11 +92,15 @@ public class ConcurrentLimiterLayerTests
             ],
         };
 
-        await Task.WhenAll(
-            Enumerable.Range(0, 6)
-                .Select(_ => provider.SeedRepositoryAsync(
-                    new RepositoryRef { Name = "core" },
-                    request)));
+        var pending = Enumerable.Range(0, 6)
+            .Select(_ => provider.SeedRepositoryAsync(
+                new RepositoryRef { Name = "core" },
+                request))
+            .ToArray();
+
+        await maxReached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        release.SetResult();
+        await Task.WhenAll(pending);
 
         Assert.Equal(2, maximum);
     }
@@ -100,10 +123,12 @@ public class ConcurrentLimiterLayerTests
     public async Task ThrowsTransientProviderException_WhenSlotIsNotAvailable()
     {
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var inner = Substitute.For<IVcsProvider>();
         inner.RepositoryExistsAsync(Arg.Any<RepositoryRef>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
+                firstEntered.TrySetResult();
                 await release.Task;
                 return true;
             });
@@ -111,11 +136,11 @@ public class ConcurrentLimiterLayerTests
         var provider = new ConcurrentLimiterLayer(new ConcurrentLimiterLayerOptions
         {
             MaxConcurrentRequests = 1,
-            AcquireTimeout = TimeSpan.FromMilliseconds(30),
+            AcquireTimeout = TimeSpan.FromMilliseconds(100),
         }).Wrap(inner);
 
         var first = provider.RepositoryExistsAsync(new RepositoryRef { Name = "core" });
-        await Task.Delay(50);
+        await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         try
         {

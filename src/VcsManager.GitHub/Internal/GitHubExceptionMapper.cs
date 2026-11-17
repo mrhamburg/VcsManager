@@ -1,12 +1,11 @@
 using System.Net;
 using Octokit;
+using VcsManager.Internal;
 
 namespace VcsManager.GitHub.Internal;
 
 internal static class GitHubExceptionMapper
 {
-    private const string ProviderName = "github";
-
     public static Exception MapRepository(
         Exception exception,
         string operation,
@@ -157,7 +156,7 @@ internal static class GitHubExceptionMapper
                 exception),
             HttpStatusCode.NotFound => notFound(exception),
             HttpStatusCode.MethodNotAllowed => new VcsUnsupportedOperationException(
-                ProviderName,
+                VcsProviderNames.GitHub,
                 operation,
                 exception),
             HttpStatusCode.Conflict => new VcsConflictException(

@@ -8,8 +8,6 @@ namespace VcsManager.Gitea;
 /// </summary>
 public sealed class GiteaProvider : IVcsProvider
 {
-    private const string ProviderName = "gitea";
-
     private readonly IGiteaApiClient _client;
     private readonly GiteaOptions _options;
 
@@ -43,30 +41,18 @@ public sealed class GiteaProvider : IVcsProvider
         var owner = ResolveOwner(request.Owner);
         var name = request.Name.Trim();
 
-        try
-        {
-            var created = await _client.CreateRepositoryAsync(
-                owner,
-                request with { Name = name },
-                cancellationToken);
-            return GiteaMapper.ToRepository(created);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GiteaMapper.ToRepository(
+                await _client.CreateRepositoryAsync(
+                    owner,
+                    request with { Name = name },
+                    token)),
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "CreateRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -79,26 +65,14 @@ public sealed class GiteaProvider : IVcsProvider
         var normalized = SeedRequestValidator.Normalize(request);
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            await _client.SeedRepositoryAsync(owner, name, normalized, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.SeedRepositoryAsync(owner, name, normalized, token),
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "SeedRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -108,27 +82,15 @@ public sealed class GiteaProvider : IVcsProvider
     {
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            return GiteaMapper.ToRepository(
-                await _client.GetRepositoryAsync(owner, name, cancellationToken));
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GiteaMapper.ToRepository(
+                await _client.GetRepositoryAsync(owner, name, token)),
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "GetRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -144,38 +106,29 @@ public sealed class GiteaProvider : IVcsProvider
         RejectInternalVisibility(query.Visibility);
         var owner = ResolveOptionalOwner(query.Owner);
 
-        try
-        {
-            var page = await _client.ListRepositoriesAsync(
-                owner,
-                query,
-                pagination,
-                cancellationToken);
-
-            return new PagedResult<VcsRepository>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(repository => MatchesRepositoryQuery(repository, query))
-                    .Select(GiteaMapper.ToRepository)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = GiteaPagination.EffectivePageSize(pagination.PageSize),
-                TotalCount = page.TotalCount,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapOperation(exception, "ListRepositories");
-        }
+                var page = await _client.ListRepositoriesAsync(
+                    owner,
+                    query,
+                    pagination,
+                    token);
+
+                return new PagedResult<VcsRepository>
+                {
+                    Items = page.Items
+                        .Where(repository => MatchesRepositoryQuery(repository, query))
+                        .Select(GiteaMapper.ToRepository)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = GiteaPagination.EffectivePageSize(pagination.PageSize),
+                    TotalCount = page.TotalCount,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GiteaExceptionMapper.MapOperation(exception, "ListRepositories"),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -185,26 +138,14 @@ public sealed class GiteaProvider : IVcsProvider
     {
         var (owner, name) = ResolveRepository(repository);
 
-        try
-        {
-            await _client.DeleteRepositoryAsync(owner, name, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+        await ProviderOperation.ExecuteAsync(
+            token => _client.DeleteRepositoryAsync(owner, name, token),
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "DeleteRepository",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -258,31 +199,15 @@ public sealed class GiteaProvider : IVcsProvider
         var (owner, name) = ResolveRepository(repository);
         request = NormalizeCreatePullRequestRequest(request);
 
-        try
-        {
-            var created = await _client.CreatePullRequestAsync(
-                owner,
-                name,
-                request,
-                cancellationToken);
-            return GiteaMapper.ToPullRequest(created);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GiteaMapper.ToPullRequest(
+                await _client.CreatePullRequestAsync(owner, name, request, token)),
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "CreatePullRequest",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -292,34 +217,18 @@ public sealed class GiteaProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
         var resolved = RepositoryRefOf(owner, name);
 
-        try
-        {
-            var pullRequest = await _client.GetPullRequestAsync(
-                owner,
-                name,
-                number,
-                cancellationToken);
-            return GiteaMapper.ToPullRequest(pullRequest);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapPullRequest(
+        return await ProviderOperation.ExecuteAsync(
+            async token => GiteaMapper.ToPullRequest(
+                await _client.GetPullRequestAsync(owner, name, number, token)),
+            exception => GiteaExceptionMapper.MapPullRequest(
                 exception,
                 "GetPullRequest",
                 resolved,
-                number);
-        }
+                number),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -333,43 +242,34 @@ public sealed class GiteaProvider : IVcsProvider
         query = QueryNormalization.Normalize(query ?? new PullRequestQuery());
         pagination ??= new PaginationOptions();
 
-        try
-        {
-            var page = await _client.ListPullRequestsAsync(
-                owner,
-                name,
-                query,
-                pagination,
-                cancellationToken);
-
-            return new PagedResult<PullRequest>
+        return await ProviderOperation.ExecuteAsync(
+            async token =>
             {
-                Items = page.Items
-                    .Where(pullRequest => QueryMatcher.Matches(query, pullRequest.State, pullRequest.Author, pullRequest.SourceBranch, pullRequest.TargetBranch))
-                    .Select(GiteaMapper.ToPullRequest)
-                    .ToArray(),
-                Page = pagination.Page,
-                PageSize = GiteaPagination.EffectivePageSize(pagination.PageSize),
-                TotalCount = page.TotalCount,
-                HasNextPage = page.HasNextPage,
-            };
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (VcsProviderException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw GiteaExceptionMapper.MapRepository(
+                var page = await _client.ListPullRequestsAsync(
+                    owner,
+                    name,
+                    query,
+                    pagination,
+                    token);
+
+                return new PagedResult<PullRequest>
+                {
+                    Items = page.Items
+                        .Where(pullRequest => QueryMatcher.Matches(query, pullRequest.State, pullRequest.Author, pullRequest.SourceBranch, pullRequest.TargetBranch))
+                        .Select(GiteaMapper.ToPullRequest)
+                        .ToArray(),
+                    Page = pagination.Page,
+                    PageSize = GiteaPagination.EffectivePageSize(pagination.PageSize),
+                    TotalCount = page.TotalCount,
+                    HasNextPage = page.HasNextPage,
+                };
+            },
+            exception => GiteaExceptionMapper.MapRepository(
                 exception,
                 "ListPullRequests",
                 owner,
-                name);
-        }
+                name),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -380,9 +280,9 @@ public sealed class GiteaProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
         request ??= new MergePullRequestRequest();
-        ValidateMergeMethod(request.Method);
+        RequestValidation.ValidateMergeMethod(request.Method);
         var resolved = RepositoryRefOf(owner, name);
 
         GiteaPullRequest current;
@@ -453,7 +353,7 @@ public sealed class GiteaProvider : IVcsProvider
         CancellationToken cancellationToken = default)
     {
         var (owner, name) = ResolveRepository(repository);
-        ValidatePullRequestNumber(number);
+        RequestValidation.ValidatePullRequestNumber(number);
         var resolved = RepositoryRefOf(owner, name);
 
         GiteaPullRequest current;
@@ -542,14 +442,14 @@ public sealed class GiteaProvider : IVcsProvider
         RejectProject(repository.Project, nameof(repository));
 
         var owner = ResolveOwner(repository.Owner);
-        var name = RequireValue(repository.Name, "A repository name is required.", nameof(repository));
+        var name = RequestValidation.RequireValue(repository.Name, "A repository name is required.", nameof(repository));
 
         return (owner, name);
     }
 
     private void ValidateCreateRepositoryRequest(CreateRepositoryRequest request)
     {
-        RequireValue(request.Name, "A repository name is required.", nameof(request));
+        RequestValidation.RequireValue(request.Name, "A repository name is required.", nameof(request));
         RejectProject(request.Project, nameof(request));
         _ = ResolveOwner(request.Owner);
 
@@ -605,42 +505,10 @@ public sealed class GiteaProvider : IVcsProvider
     {
         return request with
         {
-            Title = RequireValue(request.Title, "A pull request title is required.", nameof(request)),
-            SourceBranch = RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
-            TargetBranch = RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
+            Title = RequestValidation.RequireValue(request.Title, "A pull request title is required.", nameof(request)),
+            SourceBranch = RequestValidation.RequireValue(request.SourceBranch, "A pull request source branch is required.", nameof(request)),
+            TargetBranch = RequestValidation.RequireValue(request.TargetBranch, "A pull request target branch is required.", nameof(request)),
         };
-    }
-
-    private static void ValidatePullRequestNumber(int number)
-    {
-        if (number < 1)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(number),
-                number,
-                "The pull request number must be at least 1.");
-        }
-    }
-
-    private static void ValidateMergeMethod(MergeMethod method)
-    {
-        if (!Enum.IsDefined(method))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(method),
-                method,
-                "The merge method is not valid.");
-        }
-    }
-
-    private static string RequireValue(string? value, string message, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException(message, parameterName);
-        }
-
-        return value.Trim();
     }
 
     private static RepositoryRef RepositoryRefOf(string owner, string name)
